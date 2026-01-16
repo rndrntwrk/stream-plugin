@@ -28,7 +28,7 @@ npm install @elizaos-plugins/plugin-555stream
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `STREAM555_BASE_URL` | Yes | 555stream control-plane URL (e.g., `https://control.555.tv`) |
+| `STREAM555_BASE_URL` | Yes | 555stream control-plane URL (e.g., `https://stream.rndrntwrk.com`) |
 | `STREAM555_AGENT_TOKEN` | Yes | Agent JWT token from 555stream dashboard or API |
 | `STREAM555_DEFAULT_SESSION_ID` | No | Auto-bind to this session on startup |
 | `STREAM555_REQUIRE_APPROVALS` | No | Require approval for dangerous actions (default: `true`) |
@@ -36,7 +36,7 @@ npm install @elizaos-plugins/plugin-555stream
 ### Example `.env`
 
 ```env
-STREAM555_BASE_URL=https://control.555.tv
+STREAM555_BASE_URL=https://stream.rndrntwrk.com
 STREAM555_AGENT_TOKEN=eyJhbGciOiJIUzI1NiIs...
 STREAM555_DEFAULT_SESSION_ID=abc123
 STREAM555_REQUIRE_APPROVALS=true
@@ -69,7 +69,7 @@ STREAM555_REQUIRE_APPROVALS=true
 If you have admin access to the 555stream control-plane, generate a token using the API:
 
 ```bash
-curl -X POST https://control.555.tv/api/agent/v1/auth/token \
+curl -X POST https://stream.rndrntwrk.com/api/agent/v1/auth/token \
   -H "X-Admin-Key: YOUR_ADMIN_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -117,7 +117,7 @@ You can limit agent permissions with specific scopes:
 ### 3. Set environment variables
 
 ```bash
-export STREAM555_BASE_URL=https://control.555.tv
+export STREAM555_BASE_URL=https://stream.rndrntwrk.com
 export STREAM555_AGENT_TOKEN=your_token_here
 ```
 
@@ -229,11 +229,14 @@ Actions marked with **Approval Required** use an async approval pattern to preve
 
 ### Operator Approval API
 
+The approval endpoints are served by **elizaOS** (not 555stream). Replace `localhost:3000` with your elizaOS deployment URL.
+
 All approval endpoints require authentication with the agent token.
 
 #### List Pending Approvals
 
 ```bash
+# Replace localhost:3000 with your elizaOS URL
 curl http://localhost:3000/555stream/approvals \
   -H "Authorization: Bearer YOUR_AGENT_TOKEN"
 ```

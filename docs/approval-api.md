@@ -6,9 +6,16 @@ Complete API documentation for the approval system endpoints.
 
 All approval endpoints are prefixed with `/555stream/approvals`.
 
+These endpoints are served by **elizaOS** (not the 555stream backend). Replace `localhost:3000` with your elizaOS deployment URL.
+
 When running elizaOS locally, the full URL is:
 ```
 http://localhost:3000/555stream/approvals
+```
+
+In production, this would be your elizaOS deployment URL:
+```
+https://your-elizaos-instance.com/555stream/approvals
 ```
 
 ## Authentication
