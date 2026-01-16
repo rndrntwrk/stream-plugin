@@ -1,0 +1,87 @@
+{
+  "name": "@elizaos-plugins/plugin-555stream",
+  "version": "0.1.0",
+  "description": "elizaOS plugin for controlling 555stream live studio via Agent Control API",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "bun run build"
+  },
+  "agentConfig": {
+    "pluginType": "elizaos:plugin:1.0.0",
+    "pluginParameters": {
+      "STREAM555_BASE_URL": {
+        "type": "string",
+        "description": "555stream control-plane URL (e.g., https://control.555.tv)",
+        "required": true
+      },
+      "STREAM555_AGENT_TOKEN": {
+        "type": "string",
+        "description": "Agent JWT token from /api/agent/v1/auth/token",
+        "required": true,
+        "sensitive": true
+      },
+      "STREAM555_DEFAULT_SESSION_ID": {
+        "type": "string",
+        "description": "Optional session ID to auto-connect",
+        "required": false
+      },
+      "STREAM555_REQUIRE_APPROVALS": {
+        "type": "boolean",
+        "description": "Require approval for dangerous actions (start/stop stream, etc.)",
+        "default": true
+      }
+    }
+  },
+  "keywords": [
+    "elizaos",
+    "elizaos-plugin",
+    "plugin",
+    "555stream",
+    "livestream",
+    "streaming",
+    "ai-agent",
+    "broadcast"
+  ],
+  "author": "555stream",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/555stream/plugin-555stream.git"
+  },
+  "bugs": {
+    "url": "https://github.com/555stream/plugin-555stream/issues"
+  },
+  "homepage": "https://github.com/555stream/plugin-555stream#readme",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "peerDependencies": {
+    "@elizaos/core": "^1.7.0"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@elizaos/core": "^1.7.0",
+    "@types/node": "^20.0.0",
+    "@types/ws": "^8.5.0",
+    "typescript": "^5.0.0"
+  }
+}
