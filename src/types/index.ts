@@ -471,3 +471,74 @@ export interface RadioControlAction {
   action: 'toggleTrack' | 'toggleEffect' | 'setAutoDJMode' | 'setVolume' | 'setBackground';
   payload: Record<string, unknown>;
 }
+
+// ==========================================
+// Ad Break Types
+// ==========================================
+
+export type AdLayout = 'l-bar' | 'bottom-bar' | 'side-bar' | 'squeeze-all';
+
+export interface AdPanel {
+  id: string;
+  placement: 'left' | 'right' | 'top' | 'bottom';
+  size: { width: string | number; height: string | number };
+  backgroundColor?: string;
+  imageUrl?: string;
+  logoUrl?: string;
+  text?: string;
+  qrCodeUrl?: string;
+  dataSourceId?: string;
+  template?: string;
+}
+
+export interface AdMainContent {
+  scale: number;
+  position: string;
+  borderRadius?: number;
+  shadow?: boolean;
+}
+
+export interface AdConfig {
+  id: string;
+  name: string;
+  layout: AdLayout;
+  duration: number;
+  mainContent: AdMainContent;
+  panels: AdPanel[];
+  sponsorId?: string;
+  sponsorName?: string;
+  showCountdown: boolean;
+  onCompleteAction: 'hide' | 'repeat' | 'next';
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface AdBreakTriggerResult {
+  graphicId: string;
+  layout: AdLayout;
+  duration: number;
+}
+
+export interface AdBreakSchedule {
+  id: string;
+  adId: string;
+  startTime: string;
+  createdAt?: string;
+}
+
+export interface AdMetrics {
+  impressions: number;
+  clicks: number;
+  lastImpression?: string;
+}
+
+export interface Sponsor {
+  id: string;
+  name: string;
+  logoUrl?: string;
+  websiteUrl?: string;
+  description?: string;
+  tier: 'bronze' | 'silver' | 'gold' | 'platinum';
+  createdAt?: string;
+  updatedAt?: string;
+}

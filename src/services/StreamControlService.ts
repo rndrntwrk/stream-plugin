@@ -1125,6 +1125,587 @@ export class StreamControlService implements Service {
   }
 
   // ==========================================
+  // Alert Methods
+  // ==========================================
+
+  /**
+   * Create and queue an alert
+   */
+  async createAlert(
+    config: {
+      eventType: 'follow' | 'subscribe' | 'donation' | 'raid' | 'bits' | 'custom';
+      message: string;
+      username?: string;
+      amount?: string;
+      image?: string;
+      sound?: { src: string; volume: number };
+      duration?: number;
+      priority?: number;
+      variant?: 'popup' | 'banner' | 'corner' | 'fullscreen';
+    },
+    sessionId?: string
+  ): Promise<{ id: string; eventType: string; message: string; status: string; createdAt: string }> {
+    if (!this.httpClient) {
+      throw new Error('[555stream] Service not initialized');
+    }
+
+    const id = sessionId || this.boundSessionId;
+    if (!id) {
+      throw new Error('[555stream] No session bound');
+    }
+
+    const response = await this.httpClient.post<{ alert: { id: string; eventType: string; message: string; status: string; createdAt: string } }>(
+      `/api/agent/v1/sessions/${id}/studio/alerts`,
+      config
+    );
+
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Failed to create alert');
+    }
+
+    return response.data.alert;
+  }
+
+  /**
+   * Control the alert queue (skip, pause, resume, clear)
+   */
+  async controlAlerts(
+    action: 'skip' | 'pause' | 'resume' | 'clear',
+    sessionId?: string
+  ): Promise<void> {
+    if (!this.httpClient) {
+      throw new Error('[555stream] Service not initialized');
+    }
+
+    const id = sessionId || this.boundSessionId;
+    if (!id) {
+      throw new Error('[555stream] No session bound');
+    }
+
+    const response = await this.httpClient.post(
+      `/api/agent/v1/sessions/${id}/studio/alerts/${action}`,
+      {}
+    );
+
+    if (!response.success) {
+      throw new Error(response.error || `Failed to ${action} alerts`);
+    }
+  }
+
+  /**
+   * Get alert queue status
+   */
+  async getAlerts(sessionId?: string): Promise<{
+    queue: Array<{ id: string; eventType: string; message: string; status: string }>;
+    isPaused: boolean;
+    currentAlert?: { id: string; eventType: string };
+  }> {
+    if (!this.httpClient) {
+      throw new Error('[555stream] Service not initialized');
+    }
+
+    const id = sessionId || this.boundSessionId;
+    if (!id) {
+      throw new Error('[555stream] No session bound');
+    }
+
+    const response = await this.httpClient.get<{
+      queue: Array<{ id: string; eventType: string; message: string; status: string }>;
+      isPaused: boolean;
+      currentAlert?: { id: string; eventType: string };
+    }>(
+      `/api/agent/v1/sessions/${id}/studio/alerts`
+    );
+
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Failed to get alerts');
+    }
+
+    return response.data;
+  }
+
+  // ==========================================
+  // Scene Transition Methods
+  // ==========================================
+
+  /**
+   * Transition to a scene with optional transition effect
+   */
+  async transitionToScene(
+    sceneId: string,
+    transition?: {
+      type?: 'cut' | 'fade' | 'slide' | 'wipe' | 'zoom' | 'blur' | 'stinger';
+      duration?: number;
+      direction?: 'left' | 'right' | 'up' | 'down';
+      easing?: string;
+      stingerUrl?: string;
+    },
+    sessionId?: string
+  ): Promise<{ previousScene?: string; currentScene: string }> {
+    if (!this.httpClient) {
+      throw new Error('[555stream] Service not initialized');
+    }
+
+    const id = sessionId || this.boundSessionId;
+    if (!id) {
+      throw new Error('[555stream] No session bound');
+    }
+
+    const response = await this.httpClient.post<{ previousScene?: string; currentScene: string }>(
+      `/api/agent/v1/sessions/${id}/studio/scenes/transition`,
+      { sceneId, transition }
+    );
+
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Failed to transition scene');
+    }
+
+    return response.data;
+  }
+
+  /**
+   * Get all scenes
+   */
+  async getScenes(sessionId?: string): Promise<Array<{
+    id: string;
+    name: string;
+    isActive: boolean;
+    graphicIds: string[];
+  }>> {
+    if (!this.httpClient) {
+      throw new Error('[555stream] Service not initialized');
+    }
+
+    const id = sessionId || this.boundSessionId;
+    if (!id) {
+      throw new Error('[555stream] No session bound');
+    }
+
+    const response = await this.httpClient.get<{
+      scenes: Array<{ id: string; name: string; isActive: boolean; graphicIds: string[] }>;
+    }>(
+      `/api/agent/v1/sessions/${id}/studio/scenes`
+    );
+
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Failed to get scenes');
+    }
+
+    return response.data.scenes;
+  }
+
+  // ==========================================
+  // Template Methods
+  // ==========================================
+
+  /**
+   * Get available templates
+   */
+  async getTemplates(filters?: {
+    category?: string;
+    type?: string;
+  }): Promise<Array<{
+    id: string;
+    name: string;
+    category: string;
+    type: string;
+    description?: string;
+    thumbnail?: string;
+  }>> {
+    if (!this.httpClient) {
+      throw new Error('[555stream] Service not initialized');
+    }
+
+    const queryParams = new URLSearchParams();
+    if (filters?.category) queryParams.set('category', filters.category);
+    if (filters?.type) queryParams.set('type', filters.type);
+
+    const queryString = queryParams.toString();
+    const url = `/api/agent/v1/templates${queryString ? `?${queryString}` : ''}`;
+
+    const response = await this.httpClient.get<{
+      templates: Array<{
+        id: string;
+        name: string;
+        category: string;
+        type: string;
+        description?: string;
+        thumbnail?: string;
+      }>;
+    }>(url);
+
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Failed to get templates');
+    }
+
+    return response.data.templates;
+  }
+
+  /**
+   * Apply a template to create a graphic
+   */
+  async applyTemplate(
+    templateId: string,
+    customizations?: {
+      title?: string;
+      subtitle?: string;
+      content?: string;
+      position?: { x: number; y: number };
+      visible?: boolean;
+    },
+    sessionId?: string
+  ): Promise<{ id: string; type: string; name?: string }> {
+    if (!this.httpClient) {
+      throw new Error('[555stream] Service not initialized');
+    }
+
+    const id = sessionId || this.boundSessionId;
+    if (!id) {
+      throw new Error('[555stream] No session bound');
+    }
+
+    const response = await this.httpClient.post<{
+      graphic: { id: string; type: string; name?: string };
+    }>(
+      `/api/agent/v1/sessions/${id}/studio/templates/${templateId}/apply`,
+      customizations || {}
+    );
+
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Failed to apply template');
+    }
+
+    return response.data.graphic;
+  }
+
+  // ==========================================
+  // AI Suggestions Methods
+  // ==========================================
+
+  /**
+   * Get AI-driven overlay suggestions based on context
+   */
+  async getOverlaySuggestions(context: {
+    contentType?: string;
+    mood?: string;
+    currentScene?: string;
+    query?: string;
+  }): Promise<Array<{
+    templateId: string;
+    templateName: string;
+    reason: string;
+    priority: 'high' | 'medium' | 'low';
+    category: string;
+  }>> {
+    if (!this.httpClient) {
+      throw new Error('[555stream] Service not initialized');
+    }
+
+    // Get available templates first
+    const templates = await this.getTemplates();
+
+    // AI-driven suggestions based on context
+    const suggestions = this.generateSuggestions(templates, context);
+
+    return suggestions;
+  }
+
+  /**
+   * Generate suggestions based on content type and mood
+   */
+  private generateSuggestions(
+    templates: Array<{ id: string; name: string; category: string; type: string }>,
+    context: { contentType?: string; mood?: string; currentScene?: string; query?: string }
+  ): Array<{
+    templateId: string;
+    templateName: string;
+    reason: string;
+    priority: 'high' | 'medium' | 'low';
+    category: string;
+  }> {
+    const suggestions: Array<{
+      templateId: string;
+      templateName: string;
+      reason: string;
+      priority: 'high' | 'medium' | 'low';
+      category: string;
+    }> = [];
+
+    const contentType = context.contentType?.toLowerCase() || '';
+    const mood = context.mood?.toLowerCase() || '';
+    const query = context.query?.toLowerCase() || '';
+
+    // Content type based suggestions
+    const contentTypeMatches: Record<string, { categories: string[]; types: string[]; reason: string }> = {
+      gaming: {
+        categories: ['gaming', 'esports'],
+        types: ['lowerThird', 'alert', 'countdown'],
+        reason: 'Great for gaming streams with dynamic alerts and countdowns',
+      },
+      podcast: {
+        categories: ['podcast', 'minimal', 'professional'],
+        types: ['lowerThird', 'ticker'],
+        reason: 'Clean, professional look for podcast content',
+      },
+      tutorial: {
+        categories: ['education', 'minimal'],
+        types: ['lowerThird', 'countdown'],
+        reason: 'Clear overlays that don\'t distract from educational content',
+      },
+      music: {
+        categories: ['music', 'minimal'],
+        types: ['nowPlaying', 'lowerThird'],
+        reason: 'Perfect for music streams with now playing info',
+      },
+      irl: {
+        categories: ['minimal', 'social'],
+        types: ['lowerThird', 'chatOverlay'],
+        reason: 'Unobtrusive overlays for real-life streaming',
+      },
+    };
+
+    // Mood based adjustments
+    const moodMatches: Record<string, { categories: string[]; reason: string }> = {
+      energetic: {
+        categories: ['gaming', 'esports', 'vibrant'],
+        reason: 'High-energy visuals to match the vibe',
+      },
+      chill: {
+        categories: ['lofi', 'minimal', 'relaxed'],
+        reason: 'Relaxed, easy-on-the-eyes overlays',
+      },
+      professional: {
+        categories: ['corporate', 'news', 'minimal'],
+        reason: 'Clean, professional appearance',
+      },
+      fun: {
+        categories: ['gaming', 'social', 'colorful'],
+        reason: 'Playful and engaging overlays',
+      },
+    };
+
+    // Score each template
+    for (const template of templates) {
+      let score = 0;
+      let reasons: string[] = [];
+
+      const templateCat = template.category.toLowerCase();
+      const templateType = template.type.toLowerCase();
+
+      // Content type matching
+      if (contentType && contentTypeMatches[contentType]) {
+        const match = contentTypeMatches[contentType];
+        if (match.categories.some(c => templateCat.includes(c))) {
+          score += 3;
+          reasons.push(match.reason);
+        }
+        if (match.types.some(t => templateType.includes(t))) {
+          score += 2;
+        }
+      }
+
+      // Mood matching
+      if (mood && moodMatches[mood]) {
+        const match = moodMatches[mood];
+        if (match.categories.some(c => templateCat.includes(c))) {
+          score += 2;
+          if (!reasons.includes(match.reason)) {
+            reasons.push(match.reason);
+          }
+        }
+      }
+
+      // Query matching (keyword search)
+      if (query) {
+        if (template.name.toLowerCase().includes(query) || templateCat.includes(query)) {
+          score += 4;
+          reasons.push('Matches your search');
+        }
+      }
+
+      // Essential overlays get base score
+      if (['lowerthird', 'alert'].includes(templateType)) {
+        score += 1;
+        if (reasons.length === 0) {
+          reasons.push('Essential overlay for any stream');
+        }
+      }
+
+      if (score > 0) {
+        suggestions.push({
+          templateId: template.id,
+          templateName: template.name,
+          reason: reasons[0] || 'Recommended overlay',
+          priority: score >= 4 ? 'high' : score >= 2 ? 'medium' : 'low',
+          category: template.category,
+        });
+      }
+    }
+
+    // Sort by priority and limit
+    const priorityOrder = { high: 0, medium: 1, low: 2 };
+    suggestions.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+
+    return suggestions.slice(0, 10);
+  }
+
+  // ==========================================
+  // Ad Break Methods
+  // ==========================================
+
+  /**
+   * List available ad configurations
+   */
+  async listAds(sessionId?: string): Promise<Array<{
+    id: string;
+    name: string;
+    layout: string;
+    duration: number;
+    sponsorName?: string;
+  }>> {
+    if (!this.httpClient) {
+      throw new Error('[555stream] Service not initialized');
+    }
+
+    const id = sessionId || this.boundSessionId;
+    if (!id) {
+      throw new Error('[555stream] No session bound');
+    }
+
+    const response = await this.httpClient.get<{
+      ads: Array<{
+        id: string;
+        name: string;
+        layout: string;
+        duration: number;
+        sponsorName?: string;
+      }>;
+    }>(
+      `/api/agent/v1/sessions/${id}/ads`
+    );
+
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Failed to list ads');
+    }
+
+    return response.data.ads;
+  }
+
+  /**
+   * Trigger an ad break
+   */
+  async triggerAdBreak(
+    adId: string,
+    options?: { duration?: number },
+    sessionId?: string
+  ): Promise<{
+    graphicId: string;
+    layout: string;
+    duration: number;
+  }> {
+    if (!this.httpClient) {
+      throw new Error('[555stream] Service not initialized');
+    }
+
+    const id = sessionId || this.boundSessionId;
+    if (!id) {
+      throw new Error('[555stream] No session bound');
+    }
+
+    const response = await this.httpClient.post<{
+      success: boolean;
+      graphic: {
+        id: string;
+        content: {
+          layout: string;
+          duration: number;
+        };
+      };
+    }>(
+      `/api/agent/v1/sessions/${id}/ads/${adId}/trigger`,
+      options || {}
+    );
+
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Failed to trigger ad break');
+    }
+
+    return {
+      graphicId: response.data.graphic.id,
+      layout: response.data.graphic.content.layout,
+      duration: response.data.graphic.content.duration,
+    };
+  }
+
+  /**
+   * Dismiss the current ad break
+   */
+  async dismissAdBreak(sessionId?: string): Promise<{ dismissed: boolean }> {
+    if (!this.httpClient) {
+      throw new Error('[555stream] Service not initialized');
+    }
+
+    const id = sessionId || this.boundSessionId;
+    if (!id) {
+      throw new Error('[555stream] No session bound');
+    }
+
+    const response = await this.httpClient.post<{
+      success: boolean;
+      dismissed: boolean;
+    }>(
+      `/api/agent/v1/sessions/${id}/ads/dismiss`,
+      {}
+    );
+
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Failed to dismiss ad break');
+    }
+
+    return { dismissed: response.data.dismissed };
+  }
+
+  /**
+   * Schedule an ad break for a specific time
+   */
+  async scheduleAdBreak(
+    adId: string,
+    startTime: string,
+    sessionId?: string
+  ): Promise<{
+    id: string;
+    adId: string;
+    startTime: string;
+  }> {
+    if (!this.httpClient) {
+      throw new Error('[555stream] Service not initialized');
+    }
+
+    const id = sessionId || this.boundSessionId;
+    if (!id) {
+      throw new Error('[555stream] No session bound');
+    }
+
+    const response = await this.httpClient.post<{
+      success: boolean;
+      schedule: {
+        id: string;
+        adId: string;
+        startTime: string;
+      };
+    }>(
+      `/api/agent/v1/sessions/${id}/ads/schedule`,
+      { adId, startTime }
+    );
+
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Failed to schedule ad break');
+    }
+
+    return response.data.schedule;
+  }
+
+  // ==========================================
   // Private Methods
   // ==========================================
 
