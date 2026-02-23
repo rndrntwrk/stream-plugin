@@ -276,6 +276,28 @@ export interface StreamInput {
   radioConfig?: RadioConfig;
 }
 
+export interface AppStreamRequirements {
+  wrapperRequired?: boolean;
+  wrapperProvided?: boolean;
+  publicUrlRequired?: boolean;
+  localhostAllowed?: boolean;
+}
+
+export interface AppViewerSpec {
+  postMessageAuth: boolean;
+  sandbox?: string | null;
+  embedParamKeys?: string[];
+}
+
+export interface AppStreamSpec {
+  name: string;
+  displayName?: string | null;
+  category?: string | null;
+  launchType?: string | null;
+  viewer?: AppViewerSpec | null;
+  requirements?: AppStreamRequirements;
+}
+
 export interface StreamOptions {
   framerate?: number;
   videoBitrate?: number;
@@ -283,6 +305,10 @@ export interface StreamOptions {
   width?: number;
   height?: number;
   timeoutSeconds?: number;
+  scene?: string;
+  appName?: string;
+  resolvedFrom?: string;
+  app?: AppStreamSpec;
 }
 
 export interface StreamStartResult {
@@ -541,4 +567,69 @@ export interface Sponsor {
   tier: 'bronze' | 'silver' | 'gold' | 'platinum';
   createdAt?: string;
   updatedAt?: string;
+}
+
+// ==========================================
+// Chat Types
+// ==========================================
+
+export interface ChatMessage {
+  id: string;
+  platform: string;
+  platformMessageId?: string;
+  channelId?: string;
+  user: {
+    id: string;
+    username: string;
+    displayName: string;
+    avatarUrl?: string | null;
+    color?: string;
+    badges?: Array<{ type: string; label: string; imageUrl?: string | null }>;
+  };
+  content: {
+    text: string;
+    emotes?: Array<{ code: string; url: string; start: number; end: number }>;
+    isAction?: boolean;
+  };
+  metadata?: {
+    timestamp: number;
+    isModerator?: boolean;
+    isSubscriber?: boolean;
+    isReply?: boolean;
+    replyToId?: string | null;
+  };
+  sessionId?: string;
+}
+
+export interface ChatStatus {
+  sessionId: string;
+  active: boolean;
+  platforms: Record<string, { connected: boolean; connecting: boolean }>;
+}
+
+export interface ChatPlatformConfig {
+  platform: 'twitch' | 'kick' | 'pump';
+  channelId: string;
+  credentials?: {
+    username?: string;
+    oauthToken?: string;
+  };
+}
+
+export interface ChatMessagesResult {
+  sessionId: string;
+  messages: ChatMessage[];
+  count: number;
+}
+
+export interface ChatSendResult {
+  sent: boolean;
+  sessionId: string;
+  platform: string;
+}
+
+export interface ChatStartResult {
+  success: boolean;
+  sessionId: string;
+  platforms: string[];
 }

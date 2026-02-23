@@ -4,7 +4,7 @@ elizaOS plugin for AI agent control of [555stream](https://555.tv) live streamin
 
 ## Features
 
-- **26 Actions** for complete stream control
+- **27 Actions** for complete stream control
 - **Real-time State Sync** via WebSocket
 - **Approval Flow** for dangerous operations
 - **HTTP + WebSocket Client** for Agent Control API
@@ -139,9 +139,34 @@ The plugin will automatically connect to the 555stream control-plane and bind to
 | Action | Description | Approval |
 |--------|-------------|----------|
 | `STREAM555_STREAM_START` | Start streaming to platforms | **Yes** |
+| `STREAM555_GO_LIVE_APP` | Start website-capture stream for an app viewer URL | **Yes** |
 | `STREAM555_STREAM_STOP` | Stop all active streams | **Yes** |
 | `STREAM555_STREAM_FALLBACK` | Switch to fallback mode | **Yes** |
 | `STREAM555_STREAM_STATUS` | Get current stream status | No |
+
+#### App streaming (website capture)
+
+Use `STREAM555_GO_LIVE_APP` to stream a game/app spectator UI (e.g., Babylon / Agent Town) via `input.type="website"`.
+
+Parameters (via action `options`):
+- `viewerUrl` (required): public `https://...` URL that `capture-service` can reach (avoid `localhost` unless `allowLocalhost=true`)
+- `appName` (optional): short identifier (e.g., `"babylon"`)
+- `scene` (optional): studio scene name (defaults to `"default"`)
+- `app` (optional): metadata forwarded to 555stream as `options.app` for validation/auditing (viewer auth + requirements)
+
+Example:
+```json
+{
+  "viewerUrl": "https://babylon.social/",
+  "appName": "babylon",
+  "scene": "default",
+  "app": {
+    "name": "babylon",
+    "viewer": { "postMessageAuth": false },
+    "requirements": { "publicUrlRequired": true }
+  }
+}
+```
 
 ### State Management
 

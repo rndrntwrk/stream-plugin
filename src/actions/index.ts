@@ -8,6 +8,7 @@ export { bootstrapAction } from './bootstrap.js';
 
 // Stream Control
 export { streamStartAction } from './streamStart.js';
+export { streamAppStartAction } from './streamAppStart.js';
 export { streamStopAction } from './streamStop.js';
 export { streamFallbackAction } from './streamFallback.js';
 export { streamStatusAction } from './streamStatus.js';
@@ -50,6 +51,7 @@ export { radioControlAction } from './radioControl.js';
 import { healthcheckAction } from './healthcheck.js';
 import { bootstrapAction } from './bootstrap.js';
 import { streamStartAction } from './streamStart.js';
+import { streamAppStartAction } from './streamAppStart.js';
 import { streamStopAction } from './streamStop.js';
 import { streamFallbackAction } from './streamFallback.js';
 import { streamStatusAction } from './streamStatus.js';
@@ -80,6 +82,7 @@ export const allActions = [
   bootstrapAction,
   // Stream Control
   streamStartAction,
+  streamAppStartAction,
   streamStopAction,
   streamFallbackAction,
   streamStatusAction,
