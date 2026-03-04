@@ -1,6 +1,6 @@
 # Plugin Release P0 Checklist (Tonight)
 
-Target: publish `@elizaos-plugins/plugin-555stream` with safe defaults and operator-ready setup.
+Target: publish `@rndrntwrk/plugin-555stream` with safe defaults and operator-ready setup.
 
 ## Hard gate
 

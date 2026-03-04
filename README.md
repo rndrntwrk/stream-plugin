@@ -1,4 +1,4 @@
-# @elizaos-plugins/plugin-555stream
+# @rndrntwrk/plugin-555stream
 
 elizaOS plugin for AI agent control of [555stream](https://555.tv) live streaming studio via the Agent Control API.
 
@@ -21,13 +21,13 @@ elizaOS plugin for AI agent control of [555stream](https://555.tv) live streamin
 ## Installation
 
 ```bash
-bun add @elizaos-plugins/plugin-555stream
+bun add @rndrntwrk/plugin-555stream
 ```
 
 Or with npm:
 
 ```bash
-npm install @elizaos-plugins/plugin-555stream
+npm install @rndrntwrk/plugin-555stream
 ```
 
 ## Configuration
@@ -91,7 +91,7 @@ For game/web viewers, use `STREAM555_GO_LIVE_APP`.
   "plugins": [
     "@elizaos/plugin-sql",
     "@elizaos/plugin-bootstrap",
-    "@elizaos-plugins/plugin-555stream"
+    "@rndrntwrk/plugin-555stream"
   ]
 }
 ```

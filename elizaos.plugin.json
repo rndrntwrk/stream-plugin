@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "name": "@elizaos-plugins/plugin-555stream",
+  "name": "@rndrntwrk/plugin-555stream",
   "displayName": "555stream Live Control",
   "description": "Authenticate, configure, and control 555stream sessions for live streaming, ads, overlays, chat, and guests.",
   "category": "streaming",

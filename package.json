@@ -1,5 +1,5 @@
 {
-  "name": "@elizaos-plugins/plugin-555stream",
+  "name": "@rndrntwrk/plugin-555stream",
   "version": "0.1.0",
   "description": "elizaOS plugin for controlling 555stream live studio via Agent Control API",
   "type": "module",
@@ -67,12 +67,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/555stream/plugin-555stream.git"
+    "url": "https://github.com/rndrntwrk/stream-plugin.git"
   },
   "bugs": {
-    "url": "https://github.com/555stream/plugin-555stream/issues"
+    "url": "https://github.com/rndrntwrk/stream-plugin/issues"
   },
-  "homepage": "https://github.com/555stream/plugin-555stream#readme",
+  "homepage": "https://github.com/rndrntwrk/stream-plugin#readme",
   "engines": {
     "node": ">=18.0.0"
   },

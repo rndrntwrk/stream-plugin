@@ -7,12 +7,12 @@ This guide shows how operators expose the stream plugin controls inside Milaidy 
 ### CLI
 
 ```bash
-milady plugins install @elizaos-plugins/plugin-555stream
-milady plugins configure @elizaos-plugins/plugin-555stream \
+milady plugins install @rndrntwrk/plugin-555stream
+milady plugins configure @rndrntwrk/plugin-555stream \
   STREAM555_BASE_URL=https://stream.rndrntwrk.com \
   STREAM555_AGENT_TOKEN=<agent-token> \
   STREAM555_REQUIRE_APPROVALS=true
-milady plugins enable @elizaos-plugins/plugin-555stream
+milady plugins enable @rndrntwrk/plugin-555stream
 ```
 
 ### REST API
@@ -22,7 +22,7 @@ Install:
 ```bash
 curl -X POST http://localhost:3000/api/plugins/install \
   -H "Content-Type: application/json" \
-  -d '{"name":"@elizaos-plugins/plugin-555stream"}'
+  -d '{"name":"@rndrntwrk/plugin-555stream"}'
 ```
 
 Configure + enable:
@@ -31,7 +31,7 @@ Configure + enable:
 curl -X POST http://localhost:3000/api/plugins/configure \
   -H "Content-Type: application/json" \
   -d '{
-    "name":"@elizaos-plugins/plugin-555stream",
+    "name":"@rndrntwrk/plugin-555stream",
     "config":{
       "STREAM555_BASE_URL":"https://stream.rndrntwrk.com",
       "STREAM555_AGENT_TOKEN":"<agent-token>",

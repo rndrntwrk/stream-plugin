@@ -1,5 +1,5 @@
 /**
- * @elizaos-plugins/plugin-555stream
+ * @rndrntwrk/plugin-555stream
  *
  * elizaOS plugin for controlling 555stream live studio via Agent Control API.
  *

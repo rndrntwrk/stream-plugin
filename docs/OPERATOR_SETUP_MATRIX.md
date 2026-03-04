@@ -1,6 +1,6 @@
 # 555stream Operator Setup Matrix
 
-This matrix is the canonical config reference for agents/operators using `@elizaos-plugins/plugin-555stream`.
+This matrix is the canonical config reference for agents/operators using `@rndrntwrk/plugin-555stream`.
 
 ## 1) Minimum Live (3-step path)
 

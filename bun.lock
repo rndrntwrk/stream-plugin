@@ -2,7 +2,7 @@
   "lockfileVersion": 1,
   "workspaces": {
     "": {
-      "name": "@elizaos-plugins/plugin-555stream",
+      "name": "@rndrntwrk/plugin-555stream",
       "dependencies": {
         "ws": "^8.18.0",
       },
