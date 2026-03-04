@@ -11,6 +11,13 @@ elizaOS plugin for AI agent control of [555stream](https://555.tv) live streamin
 - **HTTP + WebSocket Client** for Agent Control API
 - **Session Management** with auto-reconnect
 
+## Docs Map
+
+- `docs/QUICKSTART_3_STEPS.md` — minimal operator flow (auth → configure → go live)
+- `docs/OPERATOR_SETUP_MATRIX.md` — required/optional env + presets
+- `docs/MILAIDY_WEB_ACCESS.md` — Milaidy web/API setup + controls entrypoint
+- `docs/PLUGIN_RELEASE_P0_CHECKLIST.md` — release gate, rollback, and verification commands
+
 ## Installation
 
 ```bash
@@ -166,7 +173,7 @@ This repo includes operator-facing skills you can hand to agents directly:
 | Action | Description | Approval |
 |--------|-------------|----------|
 | `STREAM555_HEALTHCHECK` | Check API connectivity | No |
-| `STREAM555_BOOTSTRAP` | Bind to a session | No |
+| `STREAM555_BOOTSTRAP_SESSION` | Bind to a session | No |
 
 ### Stream Control
 
@@ -435,6 +442,12 @@ bun run dev
 - elizaOS `^1.7.0`
 - Node.js 18+ or Bun
 - 555stream account with Agent API access
+
+## Known Limitations (Current)
+
+- `STREAM555_GO_LIVE_APP` requires a publicly reachable viewer URL for capture-service.
+- Approval endpoints are served by the elizaOS host (`/555stream/approvals/*`), not control-plane.
+- Advanced game orchestration remains in Milaidy `five55-games`; this package is stream-control focused.
 
 ## License
 

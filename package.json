@@ -16,13 +16,15 @@
     "README.md",
     "LICENSE",
     "docs",
-    "skills"
+    "skills",
+    "elizaos.plugin.json"
   ],
   "scripts": {
     "build": "bun run clean && tsc",
     "dev": "tsc --watch",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit",
+    "release:check": "node ./scripts/release-check.mjs",
     "prepublishOnly": "bun run build"
   },
   "agentConfig": {

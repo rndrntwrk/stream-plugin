@@ -1,3 +1,8 @@
+---
+name: "Stream Operator Skill"
+description: "Run safe 3-step 555stream operations: authenticate, configure, and go live with recovery controls."
+---
+
 # Stream Operator Skill
 
 Use this skill when an agent must run a 555stream session safely in production.

@@ -1,3 +1,8 @@
+---
+name: "OpenClaw Stream Skill"
+description: "Operate 555stream scenes, overlays, and ad-safe transitions with OpenClaw content workflows."
+---
+
 # OpenClaw Stream Skill
 
 Use this skill when OpenClaw-driven agents need to integrate with 555stream overlays and live control.

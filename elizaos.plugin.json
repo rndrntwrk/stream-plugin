@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "1.0.0",
+  "name": "@elizaos-plugins/plugin-555stream",
+  "displayName": "555stream Live Control",
+  "description": "Authenticate, configure, and control 555stream sessions for live streaming, ads, overlays, chat, and guests.",
+  "category": "streaming",
+  "tags": [
+    "streaming",
+    "broadcast",
+    "ads",
+    "liveops",
+    "555stream"
+  ],
+  "quickstart": {
+    "steps": [
+      "Set STREAM555_BASE_URL and STREAM555_AGENT_TOKEN.",
+      "Run STREAM555_HEALTHCHECK and STREAM555_BOOTSTRAP_SESSION.",
+      "Configure outputs and run STREAM555_STREAM_START or STREAM555_GO_LIVE_APP."
+    ],
+    "docs": [
+      "README.md",
+      "docs/QUICKSTART_3_STEPS.md",
+      "docs/OPERATOR_SETUP_MATRIX.md",
+      "docs/MILAIDY_WEB_ACCESS.md"
+    ]
+  },
+  "actions": {
+    "prefix": "STREAM555_",
+    "approvalRequiredByDefault": true
+  }
+}
