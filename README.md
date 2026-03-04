@@ -4,7 +4,8 @@ elizaOS plugin for AI agent control of [555stream](https://555.tv) live streamin
 
 ## Features
 
-- **27 Actions** for complete stream control
+- **3-step go-live path** (authenticate → configure → go live)
+- **40+ Actions** across stream, ads, chat, overlays, templates, alerts, and studio control
 - **Real-time State Sync** via WebSocket
 - **Approval Flow** for dangerous operations
 - **HTTP + WebSocket Client** for Agent Control API
@@ -42,9 +43,35 @@ STREAM555_DEFAULT_SESSION_ID=abc123
 STREAM555_REQUIRE_APPROVALS=true
 ```
 
-## Quick Start
+## 3-Step Quick Start
 
-### 1. Add the plugin to your character file
+If you want the minimal operator runbook, see `docs/QUICKSTART_3_STEPS.md`.
+
+### Step 1 — Authenticate and bind a session
+
+Use your character file + environment variables, then run:
+
+1) `STREAM555_HEALTHCHECK`  
+2) `STREAM555_BOOTSTRAP_SESSION` (optional `sessionId`)
+
+If both succeed, the plugin is authenticated and session-bound.
+
+### Step 2 — Configure destinations and scene
+
+Typical configuration sequence:
+
+1) `STREAM555_PLATFORM_CONFIG` (set RTMP URL + key)  
+2) `STREAM555_PLATFORM_TOGGLE` (enable target platforms)  
+3) `STREAM555_SCENE_SET_ACTIVE` or `STREAM555_LAYOUT_SET` (optional studio setup)
+
+### Step 3 — Go live
+
+Call `STREAM555_STREAM_START` with your input type.  
+For game/web viewers, use `STREAM555_GO_LIVE_APP`.
+
+---
+
+### Character file setup
 
 ```json
 {
@@ -62,7 +89,7 @@ STREAM555_REQUIRE_APPROVALS=true
 }
 ```
 
-### 2. Get an Agent Token
+### Token setup
 
 #### Option A: Via Admin API (Recommended)
 
@@ -114,16 +141,23 @@ You can limit agent permissions with specific scopes:
 4. Select permissions and expiry
 5. Copy the generated token
 
-### 3. Set environment variables
+### Environment variables
 
 ```bash
 export STREAM555_BASE_URL=https://stream.rndrntwrk.com
 export STREAM555_AGENT_TOKEN=your_token_here
 ```
 
-### 4. Start your elizaOS agent
+### Start your elizaOS agent
 
 The plugin will automatically connect to the 555stream control-plane and bind to the default session if configured.
+
+## Operator Skills
+
+This repo includes operator-facing skills you can hand to agents directly:
+
+- `skills/stream-operator/SKILL.md` — production stream control runbook (3-step + safety checks)
+- `skills/openclaw/SKILL.md` — OpenClaw interaction patterns for live content and overlays
 
 ## Actions Reference
 
@@ -139,18 +173,48 @@ The plugin will automatically connect to the 555stream control-plane and bind to
 | Action | Description | Approval |
 |--------|-------------|----------|
 | `STREAM555_STREAM_START` | Start streaming to platforms | **Yes** |
+| `STREAM555_APP_LIST` | List available app-stream descriptors | No |
 | `STREAM555_GO_LIVE_APP` | Start website-capture stream for an app viewer URL | **Yes** |
 | `STREAM555_STREAM_STOP` | Stop all active streams | **Yes** |
 | `STREAM555_STREAM_FALLBACK` | Switch to fallback mode | **Yes** |
 | `STREAM555_STREAM_STATUS` | Get current stream status | No |
+
+### Ads / Monetization
+
+| Action | Description | Approval |
+|--------|-------------|----------|
+| `STREAM555_AD_LIST` | List configured ads for session | No |
+| `STREAM555_AD_BREAK_TRIGGER` | Trigger ad break / L-bar slot | **Yes** |
+| `STREAM555_AD_BREAK_DISMISS` | Dismiss active ad break | **Yes** |
+| `STREAM555_AD_BREAK_SCHEDULE` | Schedule ad break | **Yes** |
+
+### Alerts / Templates / Scene
+
+| Action | Description | Approval |
+|--------|-------------|----------|
+| `STREAM555_ALERT_CREATE` | Queue stream alert | No |
+| `STREAM555_ALERT_CONTROL` | Pause/resume/skip/clear alerts | **Yes** |
+| `STREAM555_TEMPLATE_LIST` | List overlay templates | No |
+| `STREAM555_TEMPLATE_APPLY` | Apply template overlay | No |
+| `STREAM555_OVERLAY_SUGGEST` | Suggest overlays based on context | No |
+| `STREAM555_SCENE_TRANSITION` | Transition to scene with effect | No |
+
+### Chat
+
+| Action | Description | Approval |
+|--------|-------------|----------|
+| `STREAM555_CHAT_START` | Start chat relay for bound session | No |
+| `STREAM555_CHAT_READ` | Read recent chat messages | No |
+| `STREAM555_CHAT_SEND` | Send chat message to platform | No |
+| `STREAM555_CHAT_STOP` | Stop chat relay | No |
 
 #### App streaming (website capture)
 
 Use `STREAM555_GO_LIVE_APP` to stream a game/app spectator UI (e.g., Babylon / Agent Town) via `input.type="website"`.
 
 Parameters (via action `options`):
-- `viewerUrl` (required): public `https://...` URL that `capture-service` can reach (avoid `localhost` unless `allowLocalhost=true`)
-- `appName` (optional): short identifier (e.g., `"babylon"`)
+- `viewerUrl` (optional): public `https://...` URL that `capture-service` can reach (avoid `localhost` unless `allowLocalhost=true`)
+- `appName` (optional): app identifier to resolve from `STREAM555_APP_LIST` catalog (e.g., `"babylon"`)
 - `scene` (optional): studio scene name (defaults to `"default"`)
 - `app` (optional): metadata forwarded to 555stream as `options.app` for validation/auditing (viewer auth + requirements)
 

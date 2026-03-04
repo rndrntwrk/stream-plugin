@@ -7,7 +7,7 @@
  * - HTTP + WebSocket client for 555stream Agent API
  * - Real-time session state caching
  * - STREAM555_STATE and STREAM555_CAPABILITIES providers
- * - 27 actions for complete stream control (including app website-capture go-live)
+ * - Full action surface for stream control, ads, chat, templates, alerts, and app go-live
  * - Approval flow for dangerous operations
  */
 
@@ -122,7 +122,7 @@ export const stream555Plugin: Plugin = {
 
   /**
    * Actions (tool surface for the model)
-   * 27 actions covering stream control, state, graphics, sources, guests, media, platforms, and radio
+   * Covers stream control, app catalog, ads, chat, alerts, templates, state, graphics, sources, guests, media, platforms, and radio
    */
   actions: allActions,
 

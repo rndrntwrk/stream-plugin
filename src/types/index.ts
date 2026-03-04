@@ -284,6 +284,7 @@ export interface AppStreamRequirements {
 }
 
 export interface AppViewerSpec {
+  url?: string;
   postMessageAuth: boolean;
   sandbox?: string | null;
   embedParamKeys?: string[];
@@ -296,6 +297,23 @@ export interface AppStreamSpec {
   launchType?: string | null;
   viewer?: AppViewerSpec | null;
   requirements?: AppStreamRequirements;
+}
+
+export interface AppStreamDescriptor extends AppStreamSpec {
+  specVersion?: string;
+  aliases?: string[];
+  viewer: AppViewerSpec & {
+    url: string;
+  };
+  resolvedFrom?: string;
+}
+
+export interface AppCatalogResponse {
+  apps: AppStreamDescriptor[];
+  source: string;
+  fetchedAt?: string;
+  ttlMs?: number;
+  requestId?: string;
 }
 
 export interface StreamOptions {

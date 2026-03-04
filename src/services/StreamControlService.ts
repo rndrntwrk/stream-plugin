@@ -40,6 +40,8 @@ import type {
   RadioTrack,
   RadioState,
   Source,
+  AppCatalogResponse,
+  AppStreamDescriptor,
 } from '../types/index.js';
 
 export class StreamControlService implements Service {
@@ -333,6 +335,43 @@ export class StreamControlService implements Service {
   // ==========================================
   // Stream Control Methods
   // ==========================================
+
+  /**
+   * List app-stream descriptors available to the agent.
+   */
+  async listApps(options?: { forceRefresh?: boolean }): Promise<AppCatalogResponse> {
+    if (!this.httpClient) {
+      throw new Error('[555stream] Service not initialized');
+    }
+
+    const forceRefresh = options?.forceRefresh ? '?forceRefresh=true' : '';
+    const response = await this.httpClient.get<AppCatalogResponse>(`/api/agent/v1/apps${forceRefresh}`);
+
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Failed to list apps');
+    }
+
+    return response.data;
+  }
+
+  /**
+   * Resolve an app descriptor by exact name or known alias.
+   */
+  async resolveAppDescriptor(appNameOrAlias: string, options?: { forceRefresh?: boolean }): Promise<AppStreamDescriptor | null> {
+    const query = String(appNameOrAlias || '').trim().toLowerCase();
+    if (!query) return null;
+
+    const catalog = await this.listApps(options);
+    return catalog.apps.find((app) => {
+      const names = [
+        app.name,
+        ...(Array.isArray(app.aliases) ? app.aliases : []),
+      ]
+        .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+        .map((value) => value.trim().toLowerCase());
+      return names.includes(query);
+    }) || null;
+  }
 
   /**
    * Start streaming
@@ -1807,5 +1846,151 @@ export class StreamControlService implements Service {
       current.platforms[platformId] = status;
       current.lastUpdate = Date.now();
     }
+  }
+
+  // ==========================================
+  // Chat Methods
+  // ==========================================
+
+  /**
+   * Get recent chat messages for the bound session.
+   */
+  async getChatMessages(
+    options?: { limit?: number; platform?: string },
+    sessionId?: string
+  ): Promise<{ sessionId: string; messages: unknown[]; count: number }> {
+    if (!this.httpClient) {
+      throw new Error('[555stream] Service not initialized');
+    }
+
+    const id = sessionId || this.boundSessionId;
+    if (!id) {
+      throw new Error('[555stream] No session bound');
+    }
+
+    const params = new URLSearchParams();
+    if (options?.limit) params.set('limit', String(options.limit));
+    if (options?.platform) params.set('platform', options.platform);
+
+    const qs = params.toString();
+    const url = `/api/agent/v1/sessions/${id}/chat/messages${qs ? `?${qs}` : ''}`;
+
+    const response = await this.httpClient.get<{ sessionId: string; messages: unknown[]; count: number }>(url);
+
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Failed to get chat messages');
+    }
+
+    return response.data;
+  }
+
+  /**
+   * Send a message to chat.
+   */
+  async sendChatMessage(
+    message: string,
+    platform?: string,
+    sessionId?: string
+  ): Promise<{ sent: boolean; sessionId: string; platform: string }> {
+    if (!this.httpClient) {
+      throw new Error('[555stream] Service not initialized');
+    }
+
+    const id = sessionId || this.boundSessionId;
+    if (!id) {
+      throw new Error('[555stream] No session bound');
+    }
+
+    const response = await this.httpClient.post<{ sent: boolean; sessionId: string; platform: string }>(
+      `/api/agent/v1/sessions/${id}/chat/send`,
+      { message, platform: platform || undefined }
+    );
+
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Failed to send chat message');
+    }
+
+    return response.data;
+  }
+
+  /**
+   * Get chat ingestion status.
+   */
+  async getChatStatus(
+    sessionId?: string
+  ): Promise<{ sessionId: string; active: boolean; platforms: Record<string, unknown> }> {
+    if (!this.httpClient) {
+      throw new Error('[555stream] Service not initialized');
+    }
+
+    const id = sessionId || this.boundSessionId;
+    if (!id) {
+      throw new Error('[555stream] No session bound');
+    }
+
+    const response = await this.httpClient.get<{ sessionId: string; active: boolean; platforms: Record<string, unknown> }>(
+      `/api/agent/v1/sessions/${id}/chat/status`
+    );
+
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Failed to get chat status');
+    }
+
+    return response.data;
+  }
+
+  /**
+   * Start chat ingestion for platforms.
+   */
+  async startChat(
+    platforms: Array<{ platform: string; channelId: string; credentials?: Record<string, string> }>,
+    sessionId?: string
+  ): Promise<{ success: boolean; sessionId: string; platforms: string[] }> {
+    if (!this.httpClient) {
+      throw new Error('[555stream] Service not initialized');
+    }
+
+    const id = sessionId || this.boundSessionId;
+    if (!id) {
+      throw new Error('[555stream] No session bound');
+    }
+
+    const response = await this.httpClient.post<{ success: boolean; sessionId: string; platforms: string[] }>(
+      `/api/agent/v1/sessions/${id}/chat/start`,
+      { platforms }
+    );
+
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Failed to start chat');
+    }
+
+    return response.data;
+  }
+
+  /**
+   * Stop chat ingestion.
+   */
+  async stopChat(
+    sessionId?: string
+  ): Promise<{ success: boolean; sessionId: string }> {
+    if (!this.httpClient) {
+      throw new Error('[555stream] Service not initialized');
+    }
+
+    const id = sessionId || this.boundSessionId;
+    if (!id) {
+      throw new Error('[555stream] No session bound');
+    }
+
+    const response = await this.httpClient.post<{ success: boolean; sessionId: string }>(
+      `/api/agent/v1/sessions/${id}/chat/stop`,
+      {}
+    );
+
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Failed to stop chat');
+    }
+
+    return response.data;
   }
 }

@@ -17,6 +17,7 @@ import type {
   StreamInput,
   StreamOptions,
   AppStreamSpec,
+  AppStreamDescriptor,
   Source,
 } from '../types/index.js';
 import { StreamControlService } from '../services/StreamControlService.js';
@@ -92,10 +93,40 @@ function parseBoolean(value: unknown): boolean | undefined {
   return undefined;
 }
 
+function buildAppSpecFromDescriptor(descriptor: AppStreamDescriptor): AppStreamSpec {
+  return {
+    name: descriptor.name,
+    ...(descriptor.displayName ? { displayName: descriptor.displayName } : {}),
+    ...(descriptor.category ? { category: descriptor.category } : {}),
+    ...(descriptor.launchType ? { launchType: descriptor.launchType } : {}),
+    viewer: {
+      postMessageAuth: Boolean(descriptor.viewer?.postMessageAuth),
+      ...(descriptor.viewer?.sandbox ? { sandbox: descriptor.viewer.sandbox } : {}),
+      ...(Array.isArray(descriptor.viewer?.embedParamKeys)
+        ? { embedParamKeys: descriptor.viewer.embedParamKeys }
+        : {}),
+    },
+    requirements: {
+      ...(typeof descriptor.requirements?.wrapperRequired === 'boolean'
+        ? { wrapperRequired: descriptor.requirements.wrapperRequired }
+        : {}),
+      ...(typeof descriptor.requirements?.wrapperProvided === 'boolean'
+        ? { wrapperProvided: descriptor.requirements.wrapperProvided }
+        : {}),
+      ...(typeof descriptor.requirements?.publicUrlRequired === 'boolean'
+        ? { publicUrlRequired: descriptor.requirements.publicUrlRequired }
+        : {}),
+      ...(typeof descriptor.requirements?.localhostAllowed === 'boolean'
+        ? { localhostAllowed: descriptor.requirements.localhostAllowed }
+        : {}),
+    },
+  };
+}
+
 export const streamAppStartAction: Action = {
   name: 'STREAM555_GO_LIVE_APP',
   description:
-    'Start a website-capture stream for an app viewer URL (Babylon, Agent Town, etc). Sends app requirements metadata via options.app. Requires operator approval.',
+    'Start a website-capture stream for an app viewer URL (Babylon, Agent Town, etc). Accepts viewerUrl directly or resolves it from appName via catalog. Sends app requirements metadata via options.app. Requires operator approval.',
   similes: [
     'STREAM_APP',
     'GO_LIVE_APP',
@@ -135,17 +166,44 @@ export const streamAppStartAction: Action = {
       const config = service.getConfig();
       const requireApprovals = config?.requireApprovals ?? true;
 
-      const viewerUrl = (options?.viewerUrl ?? options?.inputUrl ?? options?.url) as string | undefined;
-      const appName = options?.appName as string | undefined;
+      const rawViewerUrl = (options?.viewerUrl ?? options?.inputUrl ?? options?.url) as string | undefined;
+      const requestedAppName = options?.appName as string | undefined;
       const scene = (options?.scene as string | undefined) ?? 'default';
       const allowLocalhost = parseBoolean(options?.allowLocalhost) ?? false;
+      const forceRefreshCatalog = parseBoolean(options?.forceRefresh) ?? false;
       const sources = options?.sources as Source[] | undefined;
       const approvalId = options?._approvalId as string | undefined;
+      let viewerUrl = typeof rawViewerUrl === 'string' ? rawViewerUrl.trim() : '';
+      let appName = typeof requestedAppName === 'string' ? requestedAppName.trim() : '';
+      let resolvedCatalogApp: AppStreamDescriptor | null = null;
+      let catalogResolutionUsed = false;
 
-      if (!viewerUrl || typeof viewerUrl !== 'string' || viewerUrl.trim().length === 0) {
+      if (!viewerUrl && appName) {
+        try {
+          resolvedCatalogApp = await service.resolveAppDescriptor(appName, { forceRefresh: forceRefreshCatalog });
+          if (resolvedCatalogApp?.viewer?.url) {
+            viewerUrl = resolvedCatalogApp.viewer.url.trim();
+            appName = resolvedCatalogApp.name;
+            catalogResolutionUsed = true;
+          }
+        } catch (error) {
+          if (callback) {
+            callback({
+              text: `Failed to resolve app catalog for "${appName}": ${(error as Error).message}`,
+              content: { success: false, error: (error as Error).message },
+            });
+          }
+          return false;
+        }
+      }
+
+      if (!viewerUrl) {
         if (callback) {
+          const resolutionHint = appName
+            ? `No viewer URL provided and app "${appName}" could not be resolved from catalog.`
+            : 'No viewer URL provided.';
           callback({
-            text: 'No viewer URL provided. Set viewerUrl to the app viewer page that capture-service can reach.',
+            text: `${resolutionHint} Set viewerUrl directly or provide a valid appName from STREAM555_APP_LIST.`,
             content: { success: false, error: 'No viewerUrl provided' },
           });
         }
@@ -165,11 +223,13 @@ export const streamAppStartAction: Action = {
         return false;
       }
 
+      const normalizedAppName = appName || resolvedCatalogApp?.name || undefined;
       const appSpecFromOptions = options?.app as AppStreamSpec | undefined;
-      const appSpec: AppStreamSpec | undefined = appSpecFromOptions ?? (
-        appName
+      const appSpecFromCatalog = resolvedCatalogApp ? buildAppSpecFromDescriptor(resolvedCatalogApp) : undefined;
+      const appSpec: AppStreamSpec | undefined = appSpecFromOptions ?? appSpecFromCatalog ?? (
+        normalizedAppName
           ? {
-              name: appName,
+              name: normalizedAppName,
               requirements: {
                 publicUrlRequired: !allowLocalhost,
                 localhostAllowed: allowLocalhost,
@@ -191,8 +251,8 @@ export const streamAppStartAction: Action = {
         height: options?.height as number | undefined,
         timeoutSeconds: options?.timeoutSeconds as number | undefined,
         scene,
-        ...(appName ? { appName } : {}),
-        resolvedFrom: 'viewerUrl',
+        ...(normalizedAppName ? { appName: normalizedAppName } : {}),
+        resolvedFrom: catalogResolutionUsed ? 'catalog' : 'viewerUrl',
         ...(appSpec ? { app: appSpec } : {}),
       };
 
@@ -208,10 +268,11 @@ export const streamAppStartAction: Action = {
         : { provided: true };
 
       const params = {
-        appName,
+        appName: normalizedAppName,
         viewerUrl: viewerUrlForApproval,
         scene,
         allowLocalhost,
+        resolvedFrom: catalogResolutionUsed ? 'catalog' : 'viewerUrl',
         app: appSpec,
         sources,
         _approvalId: approvalId,
@@ -278,7 +339,7 @@ export const streamAppStartAction: Action = {
           text: [
             '**App Stream Started**',
             '',
-            ...(appName ? [`**App:** ${appName}`] : []),
+            ...(normalizedAppName ? [`**App:** ${normalizedAppName}`] : []),
             `**Input:** website capture`,
             `**Viewer URL:** ${formatUrlForDisplay(normalizedViewerUrl)}`,
             ...(jobId ? [`**Job ID:** ${jobId}`] : []),

@@ -14,7 +14,9 @@
   "files": [
     "dist",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "docs",
+    "skills"
   ],
   "scripts": {
     "build": "bun run clean && tsc",

@@ -9,9 +9,21 @@ export { bootstrapAction } from './bootstrap.js';
 // Stream Control
 export { streamStartAction } from './streamStart.js';
 export { streamAppStartAction } from './streamAppStart.js';
+export { streamAppListAction } from './streamAppList.js';
 export { streamStopAction } from './streamStop.js';
 export { streamFallbackAction } from './streamFallback.js';
 export { streamStatusAction } from './streamStatus.js';
+export { adBreakTriggerAction, adBreakDismissAction, adBreakScheduleAction, adListAction } from './adBreak.js';
+export { alertCreateAction } from './alertCreate.js';
+export { alertControlAction } from './alertControl.js';
+export { sceneTransitionAction } from './sceneTransition.js';
+export { templateListAction } from './templateList.js';
+export { templateApplyAction } from './templateApply.js';
+export { overlaySuggestAction } from './overlaySuggest.js';
+export { chatReadAction } from './chatRead.js';
+export { chatSendAction } from './chatSend.js';
+export { chatStartAction } from './chatStart.js';
+export { chatStopAction } from './chatStop.js';
 
 // State Management
 export { statePatchAction } from './statePatch.js';
@@ -52,9 +64,21 @@ import { healthcheckAction } from './healthcheck.js';
 import { bootstrapAction } from './bootstrap.js';
 import { streamStartAction } from './streamStart.js';
 import { streamAppStartAction } from './streamAppStart.js';
+import { streamAppListAction } from './streamAppList.js';
 import { streamStopAction } from './streamStop.js';
 import { streamFallbackAction } from './streamFallback.js';
 import { streamStatusAction } from './streamStatus.js';
+import { adBreakTriggerAction, adBreakDismissAction, adBreakScheduleAction, adListAction } from './adBreak.js';
+import { alertCreateAction } from './alertCreate.js';
+import { alertControlAction } from './alertControl.js';
+import { sceneTransitionAction } from './sceneTransition.js';
+import { templateListAction } from './templateList.js';
+import { templateApplyAction } from './templateApply.js';
+import { overlaySuggestAction } from './overlaySuggest.js';
+import { chatReadAction } from './chatRead.js';
+import { chatSendAction } from './chatSend.js';
+import { chatStartAction } from './chatStart.js';
+import { chatStopAction } from './chatStop.js';
 import { statePatchAction } from './statePatch.js';
 import { layoutSetAction } from './layoutSet.js';
 import { sceneSetActiveAction } from './sceneSetActive.js';
@@ -83,9 +107,24 @@ export const allActions = [
   // Stream Control
   streamStartAction,
   streamAppStartAction,
+  streamAppListAction,
   streamStopAction,
   streamFallbackAction,
   streamStatusAction,
+  adBreakTriggerAction,
+  adBreakDismissAction,
+  adBreakScheduleAction,
+  adListAction,
+  alertCreateAction,
+  alertControlAction,
+  sceneTransitionAction,
+  templateListAction,
+  templateApplyAction,
+  overlaySuggestAction,
+  chatReadAction,
+  chatSendAction,
+  chatStartAction,
+  chatStopAction,
   // State Management
   statePatchAction,
   layoutSetAction,
