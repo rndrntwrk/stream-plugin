@@ -56,7 +56,8 @@
   },
   "elizaos": {
     "displayName": "555 Stream",
-    "configSchemaFile": "./config/plugin-config.schema.json"
+    "configSchemaFile": "./config/plugin-config.schema.json",
+    "pluginUiSchemaFile": "./config/plugin-ui.schema.json"
   },
   "keywords": [
     "elizaos",

@@ -10,12 +10,17 @@
 import type { IAgentRuntime, Service } from '../types/index.js';
 import { HttpClient } from '../lib/httpClient.js';
 import { WsClient } from '../lib/wsClient.js';
-import { resolveAgentBearer } from '../lib/agentAuth.js';
+import {
+  describeAgentAuthSource,
+  isAgentAuthConfigured,
+  resolveAgentBearer,
+} from '../lib/agentAuth.js';
 import type {
   Stream555Config,
   Session,
   SessionState,
   HealthcheckResult,
+  Stream555RuntimeState,
   WsServerMessage,
   ProductionState,
   PlatformStatus,
@@ -45,8 +50,66 @@ import type {
   AppStreamDescriptor,
 } from '../types/index.js';
 
+const STREAM555_CHANNEL_RUNTIME_SPECS = [
+  {
+    enabledKey: 'STREAM555_DEST_PUMPFUN_ENABLED',
+    urlKey: 'STREAM555_DEST_PUMPFUN_RTMP_URL',
+    streamKeyKey: 'STREAM555_DEST_PUMPFUN_STREAM_KEY',
+  },
+  {
+    enabledKey: 'STREAM555_DEST_X_ENABLED',
+    urlKey: 'STREAM555_DEST_X_RTMP_URL',
+    streamKeyKey: 'STREAM555_DEST_X_STREAM_KEY',
+  },
+  {
+    enabledKey: 'STREAM555_DEST_TWITCH_ENABLED',
+    urlKey: 'STREAM555_DEST_TWITCH_RTMP_URL',
+    streamKeyKey: 'STREAM555_DEST_TWITCH_STREAM_KEY',
+  },
+  {
+    enabledKey: 'STREAM555_DEST_KICK_ENABLED',
+    urlKey: 'STREAM555_DEST_KICK_RTMP_URL',
+    streamKeyKey: 'STREAM555_DEST_KICK_STREAM_KEY',
+  },
+  {
+    enabledKey: 'STREAM555_DEST_YOUTUBE_ENABLED',
+    urlKey: 'STREAM555_DEST_YOUTUBE_RTMP_URL',
+    streamKeyKey: 'STREAM555_DEST_YOUTUBE_STREAM_KEY',
+  },
+  {
+    enabledKey: 'STREAM555_DEST_FACEBOOK_ENABLED',
+    urlKey: 'STREAM555_DEST_FACEBOOK_RTMP_URL',
+    streamKeyKey: 'STREAM555_DEST_FACEBOOK_STREAM_KEY',
+  },
+  {
+    enabledKey: 'STREAM555_DEST_CUSTOM_ENABLED',
+    urlKey: 'STREAM555_DEST_CUSTOM_RTMP_URL',
+    streamKeyKey: 'STREAM555_DEST_CUSTOM_STREAM_KEY',
+  },
+] as const;
+
+function parseBooleanEnv(value: string | undefined): boolean {
+  if (!value) return false;
+  switch (value.trim().toLowerCase()) {
+    case '1':
+    case 'true':
+    case 'yes':
+    case 'on':
+    case 'enabled':
+      return true;
+    default:
+      return false;
+  }
+}
+
 export class StreamControlService implements Service {
   static serviceType = 'stream555';
+
+  static async start(runtime: IAgentRuntime): Promise<StreamControlService> {
+    const service = new StreamControlService();
+    await service.initialize(runtime);
+    return service;
+  }
 
   private runtime: IAgentRuntime | null = null;
   private config: Stream555Config | null = null;
@@ -120,6 +183,10 @@ export class StreamControlService implements Service {
     }
     this.sessionState.clear();
     this.boundSessionId = null;
+    this.wsClient = null;
+    this.httpClient = null;
+    this.config = null;
+    this.runtime = null;
     console.log('[555stream] Service stopped');
   }
 
@@ -201,6 +268,50 @@ export class StreamControlService implements Service {
       result.checks.wsConnectable.passed;
 
     return result;
+  }
+
+  getRuntimeState(): Stream555RuntimeState {
+    const channels = STREAM555_CHANNEL_RUNTIME_SPECS.map((spec) => {
+      const enabled = parseBooleanEnv(process.env[spec.enabledKey]);
+      const urlSet = Boolean(process.env[spec.urlKey]?.trim());
+      const streamKeySet = Boolean(process.env[spec.streamKeyKey]?.trim());
+      return {
+        enabled,
+        streamKeySet,
+        ready: enabled && urlSet && streamKeySet,
+      };
+    });
+
+    const channelsSaved = channels.filter((channel) => channel.streamKeySet).length;
+    const channelsEnabled = channels.filter((channel) => channel.enabled).length;
+    const channelsReady = channels.filter((channel) => channel.ready).length;
+    const warnings: string[] = [];
+    const errors: string[] = [];
+
+    if (!this.config?.baseUrl?.trim()) {
+      errors.push('stream base URL not configured');
+    }
+    if (!isAgentAuthConfigured()) {
+      errors.push('stream authentication not configured');
+    }
+    if (channelsEnabled > 0 && channelsReady < channelsEnabled) {
+      warnings.push('one or more enabled channels are missing RTMP URL or stream key');
+    }
+    if (channelsEnabled === 0 && channelsSaved > 0) {
+      warnings.push('channel credentials are saved but no channels are enabled');
+    }
+
+    return {
+      loaded: Boolean(this.config && this.httpClient && this.wsClient),
+      authenticated: Boolean(this.config?.agentToken?.trim()) && isAgentAuthConfigured(),
+      authSource: describeAgentAuthSource(),
+      sessionBound: Boolean(this.boundSessionId),
+      channelsSaved,
+      channelsEnabled,
+      channelsReady,
+      warnings,
+      errors,
+    };
   }
 
   /**

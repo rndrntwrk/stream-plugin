@@ -198,6 +198,18 @@ export interface CheckResult {
   latencyMs?: number;
 }
 
+export interface Stream555RuntimeState {
+  loaded: boolean;
+  authenticated: boolean;
+  authSource: string;
+  sessionBound: boolean;
+  channelsSaved: number;
+  channelsEnabled: number;
+  channelsReady: number;
+  warnings: string[];
+  errors: string[];
+}
+
 // ==========================================
 // WebSocket Messages
 // ==========================================
