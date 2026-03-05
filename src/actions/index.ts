@@ -58,6 +58,7 @@ export { platformToggleAction } from './platformToggle.js';
 // Radio
 export { radioConfigAction } from './radioConfig.js';
 export { radioControlAction } from './radioControl.js';
+export { legacyCompatibilityActions } from './legacyCompat.js';
 
 // All actions for plugin registration
 import { healthcheckAction } from './healthcheck.js';
@@ -99,6 +100,7 @@ import { platformConfigAction } from './platformConfig.js';
 import { platformToggleAction } from './platformToggle.js';
 import { radioConfigAction } from './radioConfig.js';
 import { radioControlAction } from './radioControl.js';
+import { legacyCompatibilityActions } from './legacyCompat.js';
 
 export const allActions = [
   // Session Management
@@ -152,4 +154,5 @@ export const allActions = [
   // Radio
   radioConfigAction,
   radioControlAction,
+  ...legacyCompatibilityActions,
 ];

@@ -16,6 +16,11 @@ import { StreamControlService } from './services/StreamControlService.js';
 import { stateProvider, capabilitiesProvider } from './providers/index.js';
 import { allActions } from './actions/index.js';
 import { approvalRoutes, setApprovalAuthToken } from './routes/approvals.js';
+import {
+  describeAgentAuthSource,
+  isAgentAuthConfigured,
+  resolveAgentBearer,
+} from './lib/agentAuth.js';
 
 /**
  * 555stream Control Plugin
@@ -35,7 +40,10 @@ export const stream555Plugin: Plugin = {
 
     // Validate required environment variables
     const baseUrl = process.env.STREAM555_BASE_URL;
-    const agentToken = process.env.STREAM555_AGENT_TOKEN;
+    const agentToken =
+      baseUrl && baseUrl.trim().length > 0
+        ? await resolveAgentBearer(baseUrl)
+        : undefined;
 
     if (!baseUrl) {
       throw new Error(
@@ -45,11 +53,11 @@ export const stream555Plugin: Plugin = {
       );
     }
 
-    if (!agentToken) {
+    if (!isAgentAuthConfigured() || !agentToken) {
       throw new Error(
-        '[555stream] STREAM555_AGENT_TOKEN is required.\n' +
-        'Generate a token via the 555stream API or dashboard.\n' +
-        'See README.md for how to generate a token.'
+        '[555stream] STREAM555 agent auth is required.\n' +
+        'Set STREAM555_AGENT_API_KEY (recommended) or STREAM555_AGENT_TOKEN.\n' +
+        'See README.md for setup instructions.'
       );
     }
 
@@ -72,6 +80,7 @@ export const stream555Plugin: Plugin = {
     }
 
     console.log(`[555stream] Configured for ${baseUrl}`);
+    console.log(`[555stream] Auth source: ${describeAgentAuthSource()}`);
     console.log(`[555stream] Approvals required: ${process.env.STREAM555_REQUIRE_APPROVALS !== 'false'}`);
 
     // Set the auth token for approval routes

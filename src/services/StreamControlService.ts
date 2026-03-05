@@ -10,6 +10,7 @@
 import type { IAgentRuntime, Service } from '../types/index.js';
 import { HttpClient } from '../lib/httpClient.js';
 import { WsClient } from '../lib/wsClient.js';
+import { resolveAgentBearer } from '../lib/agentAuth.js';
 import type {
   Stream555Config,
   Session,
@@ -69,12 +70,15 @@ export class StreamControlService implements Service {
 
     // Load configuration from environment
     const baseUrl = process.env.STREAM555_BASE_URL;
-    const agentToken = process.env.STREAM555_AGENT_TOKEN;
+    const agentToken =
+      baseUrl && baseUrl.trim().length > 0
+        ? await resolveAgentBearer(baseUrl)
+        : undefined;
 
     if (!baseUrl || !agentToken) {
       throw new Error(
         '[555stream] Missing required configuration. ' +
-        'Set STREAM555_BASE_URL and STREAM555_AGENT_TOKEN environment variables.'
+        'Set STREAM555_BASE_URL and one of STREAM555_AGENT_API_KEY / STREAM555_AGENT_TOKEN.'
       );
     }
 
