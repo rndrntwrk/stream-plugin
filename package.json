@@ -13,6 +13,7 @@
   },
   "files": [
     "dist",
+    "config",
     "README.md",
     "LICENSE",
     "docs",
@@ -52,6 +53,10 @@
         "default": true
       }
     }
+  },
+  "elizaos": {
+    "displayName": "555 Stream",
+    "configSchemaFile": "./config/plugin-config.schema.json"
   },
   "keywords": [
     "elizaos",
