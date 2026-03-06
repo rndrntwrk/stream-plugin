@@ -20,7 +20,7 @@ It is the plugin that agents and operators should install when they need to go l
 
 ## Canonical public docs
 
-- [Open docs.milady.ai](https://docs.milady.ai/plugins/555-stream)
+- [Open docs.rndrntwrk.com](https://docs.rndrntwrk.com/555stream)
 
 ## Repo reference docs
 
