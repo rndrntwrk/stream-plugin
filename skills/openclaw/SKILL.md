@@ -1,6 +1,12 @@
 ---
 name: "OpenClaw Stream Skill"
 description: "Operate 555stream scenes, overlays, and ad-safe transitions with OpenClaw content workflows."
+metadata:
+  {
+    "audience": ["agent"],
+    "plugin": "@rndrntwrk/plugin-555stream",
+    "integration": "openclaw",
+  }
 ---
 
 # OpenClaw Stream Skill
@@ -21,6 +27,12 @@ Use this skill when OpenClaw-driven agents need to integrate with 555stream over
    - `STREAM555_TEMPLATE_APPLY`
    - `STREAM555_OVERLAY_SUGGEST`
 4. Fall back to direct graphics actions only when template flow is insufficient.
+
+Example overlay payload:
+
+```json
+{"templateId":"lbar-default","variables":{"headline":"Now playing","subhead":"OpenClaw assisted stream"}}
+```
 
 ## Operational Rules
 - Treat OpenClaw suggestions as advisory unless operator has enabled auto-apply.

@@ -5,12 +5,17 @@ import path from "node:path";
 
 const root = process.cwd();
 const requiredDocs = [
+  "CHANGELOG.md",
   "README.md",
   "docs/QUICKSTART_3_STEPS.md",
   "docs/OPERATOR_SETUP_MATRIX.md",
   "docs/MILAIDY_WEB_ACCESS.md",
+  "docs/PUBLIC_RELEASE_CHECKLIST.md",
   "docs/PLUGIN_RELEASE_P0_CHECKLIST.md",
   "elizaos.plugin.json",
+  "skills/stream-operator/SKILL.md",
+  "skills/openclaw/SKILL.md",
+  ".github/workflows/ci.yml",
 ];
 
 const actionFile = "src/actions/index.ts";
@@ -33,6 +38,17 @@ for (const relative of requiredDocs) {
   if (!fs.existsSync(full)) {
     failures.push(`missing required file: ${relative}`);
   }
+}
+
+const pkg = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
+if (pkg.elizaos?.displayName !== "555 Stream") {
+  failures.push("package.json elizaos.displayName must be '555 Stream'");
+}
+if (pkg.homepage !== "https://docs.rndrntwrk.com/555stream") {
+  failures.push("package.json homepage must point to canonical ecosystem docs");
+}
+if (pkg.publishConfig?.access !== "public") {
+  failures.push("package.json publishConfig.access must be 'public'");
 }
 
 const actionIndexSource = fs.existsSync(path.join(root, actionFile))
@@ -60,6 +76,14 @@ if (!actionIndexSource) {
       failures.push(`required action not found in ${actionFile}: ${actionName}`);
     }
   }
+}
+
+const pluginManifest = JSON.parse(fs.readFileSync(path.join(root, "elizaos.plugin.json"), "utf8"));
+if (pluginManifest.displayName !== "555 Stream") {
+  failures.push("elizaos.plugin.json displayName must be '555 Stream'");
+}
+if (!pluginManifest.quickstart?.steps?.some((step) => step.includes("STREAM555_AGENT_API_KEY"))) {
+  failures.push("elizaos.plugin.json quickstart must document STREAM555_AGENT_API_KEY");
 }
 
 if (failures.length > 0) {

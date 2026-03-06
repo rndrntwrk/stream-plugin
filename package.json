@@ -33,13 +33,29 @@
     "pluginParameters": {
       "STREAM555_BASE_URL": {
         "type": "string",
-        "description": "555stream control-plane URL (e.g., https://control.555.tv)",
-        "required": true
+        "description": "Legacy unified base URL override. Prefer STREAM555_PUBLIC_BASE_URL, with STREAM555_INTERNAL_BASE_URL reserved for allow-listed internal agents.",
+        "required": false
+      },
+      "STREAM555_PUBLIC_BASE_URL": {
+        "type": "string",
+        "description": "Public 555 Stream control-plane URL for general agents and operators.",
+        "required": false
+      },
+      "STREAM555_INTERNAL_BASE_URL": {
+        "type": "string",
+        "description": "Internal 555 Stream control-plane URL for allow-listed internal agents only.",
+        "required": false
+      },
+      "STREAM555_AGENT_API_KEY": {
+        "type": "string",
+        "description": "Preferred agent API key used to mint and refresh runtime bearer tokens.",
+        "required": false,
+        "sensitive": true
       },
       "STREAM555_AGENT_TOKEN": {
         "type": "string",
-        "description": "Agent JWT token from /api/agent/v1/auth/token",
-        "required": true,
+        "description": "Static bearer token fallback when API-key token exchange is unavailable.",
+        "required": false,
         "sensitive": true
       },
       "STREAM555_DEFAULT_SESSION_ID": {
@@ -71,6 +87,9 @@
   ],
   "author": "555stream",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/rndrntwrk/stream-plugin.git"
