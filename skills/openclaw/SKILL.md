@@ -8,18 +8,19 @@ description: "Operate 555stream scenes, overlays, and ad-safe transitions with O
 Use this skill when OpenClaw-driven agents need to integrate with 555stream overlays and live control.
 
 ## Scope
-- Stream session lifecycle integration
-- Overlay/template operations
-- Ad-aware transitions
-- Safety-first control constraints
+- stream session lifecycle integration
+- overlay/template operations
+- ad-aware transitions
+- safety-first control constraints
 
 ## Integration Sequence
-1. Run stream operator 3-step boot (`STREAM555_HEALTHCHECK`, `STREAM555_BOOTSTRAP_SESSION`, `STREAM555_STREAM_START` or `STREAM555_GO_LIVE_APP`).
-2. Start OpenClaw-facing visual context with scene/layout baseline.
-3. Use templates + overlay suggestions for contextual graphics:
+1. Run the stream operator baseline: `STREAM555_HEALTHCHECK`, `STREAM555_BOOTSTRAP_SESSION`, then `STREAM555_STREAM_START` or `STREAM555_GO_LIVE_APP`.
+2. Establish a stable scene/layout baseline.
+3. Use templates and overlay suggestions first:
    - `STREAM555_TEMPLATE_LIST`
    - `STREAM555_TEMPLATE_APPLY`
    - `STREAM555_OVERLAY_SUGGEST`
+4. Fall back to direct graphics actions only when template flow is insufficient.
 
 ## Operational Rules
 - Treat OpenClaw suggestions as advisory unless operator has enabled auto-apply.
@@ -37,3 +38,8 @@ Use this skill when OpenClaw-driven agents need to integrate with 555stream over
 - If overlay/template apply fails, fall back to direct graphics actions.
 - If scene transition fails, issue `STREAM555_SCENE_SET_ACTIVE` as deterministic fallback.
 - If ad render check fails, dismiss ad break and restore baseline scene before retry.
+
+## Do not do
+
+- Do not treat OpenClaw suggestions as authority over stream auth or channel routing.
+- Do not start/stop the stream repeatedly to compensate for template/overlay failures.

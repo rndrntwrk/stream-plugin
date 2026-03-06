@@ -1,75 +1,88 @@
-# 555stream Operator Setup Matrix
+# 555 Stream — Operator Setup Matrix
 
-This matrix is the canonical config reference for agents/operators using `@rndrntwrk/plugin-555stream`.
+This is the config and deployment matrix for the canonical public stream plugin.
 
-## 1) Minimum Live (3-step path)
+## Minimum production setup
 
-Required:
+| Key | Required | Preferred value | Notes |
+| --- | --- | --- | --- |
+| `STREAM555_PUBLIC_BASE_URL` | Yes | `https://stream.rndrntwrk.com` | Public control-plane URL |
+| `STREAM555_AGENT_API_KEY` | Preferred | `<secret>` | Preferred auth path |
+| `STREAM555_AGENT_TOKEN` | Fallback | `<secret>` | Static bearer fallback |
+| `STREAM555_REQUIRE_APPROVALS` | Yes | `true` | Keep enabled in production |
 
-| Variable | Required | Example | Notes |
-|---|---|---|---|
-| `STREAM555_BASE_URL` | Yes | `https://stream.rndrntwrk.com` | Control-plane base URL |
-| `STREAM555_AGENT_TOKEN` | Yes | `eyJ...` | Agent bearer token from `/api/agent/v1/auth/token` |
+## Common additions
 
-Optional:
+| Key | When to use |
+| --- | --- |
+| `STREAM555_DEFAULT_SESSION_ID` | Reuse a stable session |
+| `STREAM_SESSION_ID` | One-off session override |
+| `STREAM555_INTERNAL_BASE_URL` | Internal-only agents |
+| `STREAM555_INTERNAL_AGENT_IDS` | Identify which agents get the internal route |
 
-| Variable | Default | Notes |
-|---|---|---|
-| `STREAM555_DEFAULT_SESSION_ID` | unset | Reuses/auto-binds a specific session |
-| `STREAM555_REQUIRE_APPROVALS` | `true` | Keep enabled in production |
+## Wallet auth options
 
-## 2) Full Stream Operations
+| Key | Default | Purpose |
+| --- | --- | --- |
+| `STREAM555_WALLET_AUTH_PREFERRED_CHAIN` | `solana` | Solana-first wallet auth |
+| `STREAM555_WALLET_AUTH_ALLOW_PROVISION` | `true` | Allow `sw4p` wallet provisioning when needed |
+| `STREAM555_WALLET_AUTH_PROVISION_TARGET_CHAIN` | `eth` | Provisioning fallback chain |
 
-In addition to minimum live:
+## Channels
 
-- Configure destinations with `STREAM555_PLATFORM_CONFIG` + `STREAM555_PLATFORM_TOGGLE`.
-- Use `STREAM555_STREAM_START` or `STREAM555_GO_LIVE_APP` for launch.
-- Control overlays/chat/ads using the `STREAM555_*` action surface.
+Each built-in channel supports:
+- `_ENABLED`
+- `_RTMP_URL`
+- `_STREAM_KEY`
 
-No extra env vars are required for these actions beyond auth + base URL.
+Built-in channel families:
+- `STREAM555_DEST_PUMPFUN_*`
+- `STREAM555_DEST_X_*`
+- `STREAM555_DEST_TWITCH_*`
+- `STREAM555_DEST_KICK_*`
+- `STREAM555_DEST_YOUTUBE_*`
+- `STREAM555_DEST_FACEBOOK_*`
+- `STREAM555_DEST_CUSTOM_*`
 
-## 3) Milaidy Built-in Extensions (optional)
+## Recommended profiles
 
-If using Milaidy built-ins alongside canonical stream plugin:
-
-| Surface | Typical envs | Purpose |
-|---|---|---|
-| `stream555-auth` | `STREAM555_ADMIN_API_KEY` (optional) | API key lifecycle + wallet auth helper actions |
-| `stream555-ads` | `STREAM555_DEFAULT_SESSION_ID` | session-scoped ad listing/triggering |
-| `five55-games` | `STREAM555_BASE_URL`, `STREAM555_AGENT_TOKEN` | game catalog/play orchestration via agent-v1 |
-
-## 4) Presets
-
-### Preset A — Minimal go-live
+### Public operator
 
 ```env
-STREAM555_BASE_URL=https://stream.rndrntwrk.com
-STREAM555_AGENT_TOKEN=<agent-token>
+STREAM555_PUBLIC_BASE_URL=https://stream.rndrntwrk.com
+STREAM555_AGENT_API_KEY=<agent-api-key>
 STREAM555_REQUIRE_APPROVALS=true
 ```
 
-### Preset B — Go-live + stable session binding
+### Public operator with stable session
 
 ```env
-STREAM555_BASE_URL=https://stream.rndrntwrk.com
-STREAM555_AGENT_TOKEN=<agent-token>
+STREAM555_PUBLIC_BASE_URL=https://stream.rndrntwrk.com
+STREAM555_AGENT_API_KEY=<agent-api-key>
 STREAM555_DEFAULT_SESSION_ID=<session-id>
 STREAM555_REQUIRE_APPROVALS=true
 ```
 
-### Preset C — Milaidy + games + ads
+### Internal agent
 
 ```env
-STREAM555_BASE_URL=https://stream.rndrntwrk.com
-STREAM555_AGENT_TOKEN=<agent-token>
-STREAM555_DEFAULT_SESSION_ID=<session-id>
+STREAM555_PUBLIC_BASE_URL=https://stream.rndrntwrk.com
+STREAM555_INTERNAL_BASE_URL=http://control-plane:3000
+STREAM555_INTERNAL_AGENT_IDS=alice,alice-internal
+STREAM555_AGENT_API_KEY=<agent-api-key>
 STREAM555_REQUIRE_APPROVALS=true
-STREAM555_ADMIN_API_KEY=<optional-admin-key>
 ```
 
-## 5) Security baseline
+## Operational expectations
 
-- Never commit tokens/keys.
-- Keep approvals enabled in production.
-- Rotate `STREAM555_AGENT_TOKEN` on operator handoff.
-- Scope tokens to minimum required permissions when possible.
+- channels can be saved before they are enabled
+- enabled channels should be fully configured before go-live
+- app capture should use `STREAM555_GO_LIVE_APP`
+- normal studio capture should use `STREAM555_STREAM_START`
+
+## Security baseline
+
+- do not commit API keys or stream keys
+- treat internal base URLs as private infrastructure
+- keep approvals on for public release
+- prefer API-key exchange over static bearer
