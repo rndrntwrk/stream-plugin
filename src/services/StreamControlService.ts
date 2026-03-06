@@ -11,6 +11,11 @@ import type { IAgentRuntime, Service } from '../types/index.js';
 import { HttpClient } from '../lib/httpClient.js';
 import { WsClient } from '../lib/wsClient.js';
 import {
+  approveRequest,
+  listPendingApprovals,
+  rejectRequest,
+} from '../routes/approvals.js';
+import {
   describeAgentAuthSource,
   isAgentAuthConfigured,
   resolveAgentBearer,
@@ -48,6 +53,7 @@ import type {
   Source,
   AppCatalogResponse,
   AppStreamDescriptor,
+  Approval,
 } from '../types/index.js';
 
 const STREAM555_CHANNEL_RUNTIME_SPECS = [
@@ -397,6 +403,28 @@ export class StreamControlService implements Service {
    */
   getConfig(): Stream555Config | null {
     return this.config;
+  }
+
+  /**
+   * List pending operator approvals owned by the stream plugin.
+   */
+  listPendingApprovals(): Approval[] {
+    return listPendingApprovals();
+  }
+
+  /**
+   * Resolve a plugin-owned approval request.
+   */
+  resolveApproval(
+    approvalId: string,
+    decision: 'approved' | 'denied',
+    resolvedBy?: string,
+  ): boolean {
+    const approval =
+      decision === 'approved'
+        ? approveRequest(approvalId, resolvedBy)
+        : rejectRequest(approvalId, resolvedBy);
+    return Boolean(approval);
   }
 
   /**

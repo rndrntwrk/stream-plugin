@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, describe, it } from "node:test";
 import type { IAgentRuntime } from "../types/index.js";
+import { createApprovalRequest } from "../routes/approvals.js";
 import { StreamControlService } from "./StreamControlService.js";
 
 const STREAM_ENV_KEYS = [
@@ -73,5 +74,32 @@ describe("StreamControlService", () => {
 
     await service.stop();
     assert.equal(service.getRuntimeState().loaded, false);
+  });
+
+  it("exposes plugin-owned approval state for host approval APIs", async () => {
+    setEnv("STREAM555_BASE_URL", "https://stream.rndrntwrk.com");
+    setEnv("STREAM555_AGENT_TOKEN", "stream-static-token");
+
+    const service = await StreamControlService.start({} as IAgentRuntime);
+    const approval = createApprovalRequest("STREAM555_STREAM_STOP", {
+      sessionId: "session-1",
+    });
+
+    const pending = service.listPendingApprovals();
+    assert.equal(pending.some((entry) => entry.id === approval.id), true);
+
+    const resolved = service.resolveApproval(
+      approval.id,
+      "approved",
+      "stream-plugin-test",
+    );
+    assert.equal(resolved, true);
+
+    const refreshed = service
+      .listPendingApprovals()
+      .find((entry) => entry.id === approval.id);
+    assert.equal(refreshed, undefined);
+
+    await service.stop();
   });
 });
