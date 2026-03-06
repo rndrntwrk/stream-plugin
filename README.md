@@ -20,6 +20,7 @@ It is the plugin that agents and operators should install when they need to go l
 
 ## Public docs
 
+- `docs/PLUGIN_PUBLIC_STANDARD.md`
 - `docs/GET_STARTED.md`
 - `docs/INSTALL_AND_AUTH.md`
 - `docs/ACTIONS_REFERENCE.md`
