@@ -156,6 +156,7 @@ export class StreamControlService implements Service {
     this.httpClient = new HttpClient({
       baseUrl: this.config.baseUrl,
       token: this.config.agentToken,
+      tokenProvider: () => resolveAgentBearer(this.config?.baseUrl ?? baseUrl),
     });
 
     // Initialize WebSocket client

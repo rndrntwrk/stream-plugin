@@ -251,6 +251,7 @@ export interface Approval {
 export interface HttpClientOptions {
   baseUrl: string;
   token: string;
+  tokenProvider?: () => Promise<string>;
   timeout?: number;
   maxRetries?: number;
 }

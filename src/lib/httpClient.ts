@@ -13,12 +13,14 @@ import type { HttpClientOptions, ApiResponse } from '../types/index.js';
 export class HttpClient {
   private baseUrl: string;
   private token: string;
+  private tokenProvider?: () => Promise<string>;
   private timeout: number;
   private maxRetries: number;
 
   constructor(options: HttpClientOptions) {
     this.baseUrl = options.baseUrl.replace(/\/$/, ''); // Remove trailing slash
     this.token = options.token;
+    this.tokenProvider = options.tokenProvider;
     this.timeout = options.timeout ?? 30000;
     this.maxRetries = options.maxRetries ?? 3;
   }
@@ -67,6 +69,7 @@ export class HttpClient {
     const requestId = uuidv4();
 
     let lastError: Error | null = null;
+    let authRetried = false;
 
     for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
       try {
@@ -91,6 +94,13 @@ export class HttpClient {
         const data = await response.json() as T & { error?: string; requestId?: string };
 
         if (!response.ok) {
+          if (response.status === 401 && this.tokenProvider && !authRetried) {
+            authRetried = true;
+            await this.refreshToken();
+            attempt -= 1;
+            continue;
+          }
+
           // Don't retry 4xx errors (client errors)
           if (response.status >= 400 && response.status < 500) {
             return {
@@ -148,22 +158,22 @@ export class HttpClient {
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseUrl}${path}`;
     const requestId = uuidv4();
-
-    const headers: Record<string, string> = {
-      'Authorization': `Bearer ${this.token}`,
-      'Content-Type': 'application/json',
-      'X-Request-Id': requestId,
-      ...(options?.headers || {}),
-    };
-
-    if (options?.idempotencyKey) {
-      headers['Idempotency-Key'] = options.idempotencyKey;
-    }
-
     let lastError: Error | null = null;
+    let authRetried = false;
 
     for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
       try {
+        const headers: Record<string, string> = {
+          'Authorization': `Bearer ${this.token}`,
+          'Content-Type': 'application/json',
+          'X-Request-Id': requestId,
+          ...(options?.headers || {}),
+        };
+
+        if (options?.idempotencyKey) {
+          headers['Idempotency-Key'] = options.idempotencyKey;
+        }
+
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
@@ -179,6 +189,13 @@ export class HttpClient {
         const data = await response.json() as T & { error?: string; requestId?: string };
 
         if (!response.ok) {
+          if (response.status === 401 && this.tokenProvider && !authRetried) {
+            authRetried = true;
+            await this.refreshToken();
+            attempt -= 1;
+            continue;
+          }
+
           // Don't retry 4xx errors (client errors)
           if (response.status >= 400 && response.status < 500) {
             return {
@@ -247,6 +264,17 @@ export class HttpClient {
 
   private sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  private async refreshToken(): Promise<void> {
+    if (!this.tokenProvider) {
+      return;
+    }
+    const nextToken = (await this.tokenProvider()).trim();
+    if (!nextToken) {
+      throw new Error('Agent token refresh returned an empty token');
+    }
+    this.token = nextToken;
   }
 }
 
