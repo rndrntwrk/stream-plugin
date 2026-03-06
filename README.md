@@ -18,7 +18,11 @@ It is the plugin that agents and operators should install when they need to go l
 - trigger L-bar ads and recover cleanly from approval-gated stop flows
 - control studio state without shell access
 
-## Public docs
+## Canonical public docs
+
+- [Open docs.milady.ai](https://docs.milady.ai/plugins/555-stream)
+
+## Repo reference docs
 
 - `docs/PLUGIN_PUBLIC_STANDARD.md`
 - `docs/GET_STARTED.md`

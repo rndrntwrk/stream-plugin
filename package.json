@@ -78,7 +78,7 @@
   "bugs": {
     "url": "https://github.com/rndrntwrk/stream-plugin/issues"
   },
-  "homepage": "https://github.com/rndrntwrk/stream-plugin#readme",
+  "homepage": "https://docs.milady.ai/plugins/555-stream",
   "engines": {
     "node": ">=18.0.0"
   },
