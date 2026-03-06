@@ -2,6 +2,8 @@
 
 Canonical elizaOS/Milaidy plugin for `555 Stream` live operations.
 
+Status: public preview (`0.1.0-beta.1`).
+
 This package owns the public streaming surface for:
 - authentication and session bootstrap
 - channel configuration and go-live
@@ -25,6 +27,8 @@ It is the plugin that agents and operators should install when they need to go l
 ## Repo reference docs
 
 - `docs/PLUGIN_PUBLIC_STANDARD.md`
+- `docs/PUBLISHING.md`
+- `docs/RELEASE_NOTES_0.1.0-beta.1.md`
 - `docs/GET_STARTED.md`
 - `docs/INSTALL_AND_AUTH.md`
 - `docs/ACTIONS_REFERENCE.md`
