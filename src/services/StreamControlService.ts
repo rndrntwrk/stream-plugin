@@ -173,6 +173,7 @@ export class StreamControlService implements Service {
     this.wsClient = new WsClient({
       url: wsUrl,
       token: this.config.agentToken,
+      tokenProvider: () => resolveAgentBearer(this.config?.baseUrl ?? baseUrl),
     });
 
     // Set up WebSocket message handlers

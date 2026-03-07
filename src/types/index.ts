@@ -270,6 +270,7 @@ export interface ApiResponse<T = unknown> {
 export interface WsClientOptions {
   url: string;
   token: string;
+  tokenProvider?: () => Promise<string>;
   reconnectInterval?: number;
   maxReconnectAttempts?: number;
   pingInterval?: number;

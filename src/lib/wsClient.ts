@@ -21,6 +21,7 @@ import type {
 export class WsClient {
   private url: string;
   private token: string;
+  private tokenProvider?: () => Promise<string>;
   private ws: WebSocket | null = null;
   private reconnectInterval: number;
   private maxReconnectAttempts: number;
@@ -41,6 +42,7 @@ export class WsClient {
   constructor(options: WsClientOptions) {
     this.url = options.url;
     this.token = options.token;
+    this.tokenProvider = options.tokenProvider;
     this.reconnectInterval = options.reconnectInterval ?? 5000;
     this.maxReconnectAttempts = options.maxReconnectAttempts ?? 10;
     this.pingInterval = options.pingInterval ?? 25000;
@@ -113,38 +115,28 @@ export class WsClient {
       throw new Error('WebSocket not connected');
     }
 
-    return new Promise((resolve, reject) => {
-      const bindMessage: WsClientMessage = {
-        type: 'bind',
-        sessionId,
-        token: this.token,
-        clientId: this.clientId,
-      };
+    let authRetried = false;
+    let shouldRefreshBeforeAttempt = Boolean(this.tokenProvider);
 
-      // Set timeout for bind response
-      const timeout = setTimeout(() => {
-        this.messageHandlers.delete(bindHandler);
-        reject(new Error('Bind timeout'));
-      }, 10000);
+    while (true) {
+      if (shouldRefreshBeforeAttempt && this.tokenProvider) {
+        await this.refreshToken();
+      }
+      shouldRefreshBeforeAttempt = false;
 
-      // Set up one-time handler for bind response
-      // This handler clears the timeout and removes itself to prevent memory leaks
-      const bindHandler: WsEventHandler = (message) => {
-        if (message.type === 'bound' && message.sessionId === sessionId) {
-          clearTimeout(timeout);
-          this.messageHandlers.delete(bindHandler);
-          this.boundSessionId = sessionId;
-          resolve();
-        } else if (message.type === 'error') {
-          clearTimeout(timeout);
-          this.messageHandlers.delete(bindHandler);
-          reject(new Error(message.error));
+      try {
+        await this.sendBindMessage(sessionId);
+        this.boundSessionId = sessionId;
+        return;
+      } catch (error) {
+        if (!authRetried && this.tokenProvider && this.isAuthError(error)) {
+          authRetried = true;
+          await this.refreshToken();
+          continue;
         }
-      };
-
-      this.messageHandlers.add(bindHandler);
-      this.send(bindMessage);
-    });
+        throw error;
+      }
+    }
   }
 
   /**
@@ -337,5 +329,54 @@ export class WsClient {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
+  }
+
+  private sendBindMessage(sessionId: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const bindMessage: WsClientMessage = {
+        type: 'bind',
+        sessionId,
+        token: this.token,
+        clientId: this.clientId,
+      };
+
+      const timeout = setTimeout(() => {
+        this.messageHandlers.delete(bindHandler);
+        reject(new Error('Bind timeout'));
+      }, 10000);
+
+      const bindHandler: WsEventHandler = (message) => {
+        if (message.type === 'bound' && message.sessionId === sessionId) {
+          clearTimeout(timeout);
+          this.messageHandlers.delete(bindHandler);
+          resolve();
+        } else if (message.type === 'error') {
+          clearTimeout(timeout);
+          this.messageHandlers.delete(bindHandler);
+          reject(new Error(message.error));
+        }
+      };
+
+      this.messageHandlers.add(bindHandler);
+      this.send(bindMessage);
+    });
+  }
+
+  private isAuthError(error: unknown): boolean {
+    const message = String((error as Error)?.message || '').toLowerCase();
+    return ['401', 'auth', 'token', 'expired', 'unauthorized', 'forbidden', 'invalid'].some((needle) =>
+      message.includes(needle),
+    );
+  }
+
+  private async refreshToken(): Promise<void> {
+    if (!this.tokenProvider) {
+      return;
+    }
+    const nextToken = (await this.tokenProvider()).trim();
+    if (!nextToken) {
+      throw new Error('Agent token refresh returned an empty token');
+    }
+    this.token = nextToken;
   }
 }
