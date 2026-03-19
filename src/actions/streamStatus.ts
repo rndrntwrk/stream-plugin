@@ -20,17 +20,25 @@ function resolveStatusSessionId(
   service: StreamControlService,
   options?: Record<string, unknown>,
 ): string {
+  const resolved = service.resolveSessionId?.(
+    typeof options?.sessionId === 'string' ? options.sessionId : undefined,
+  );
+  if (resolved) return resolved;
+
   const requestedSessionId =
     typeof options?.sessionId === 'string' && options.sessionId.trim().length > 0
       ? options.sessionId.trim()
       : undefined;
   if (requestedSessionId) return requestedSessionId;
 
-  const boundSessionId = service.getBoundSessionId();
-  if (boundSessionId) return boundSessionId;
+  const currentSessionId = service.getCurrentSessionId();
+  if (currentSessionId) return currentSessionId;
 
   const configuredSessionId = service.getConfig()?.defaultSessionId?.trim();
   if (configuredSessionId) return configuredSessionId;
+
+  const boundSessionId = service.getBoundSessionId();
+  if (boundSessionId) return boundSessionId;
 
   throw new Error('No session bound. Provide sessionId or start a stream first.');
 }

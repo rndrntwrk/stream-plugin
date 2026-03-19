@@ -637,11 +637,15 @@ async function ensureSessionId(
   service: StreamControlService,
   requestedSessionId?: string,
 ): Promise<string> {
+  const resolved = service.resolveSessionId?.(requestedSessionId);
+  if (resolved) return resolved;
   if (requestedSessionId?.trim()) return requestedSessionId.trim();
-  const bound = service.getBoundSessionId();
-  if (bound) return bound;
+  const current = service.getCurrentSessionId();
+  if (current) return current;
   const configured = service.getConfig()?.defaultSessionId;
   if (configured?.trim()) return configured.trim();
+  const bound = service.getBoundSessionId();
+  if (bound) return bound;
   const created = await service.createOrResumeSession();
   try {
     await service.bindWebSocket(created.sessionId);

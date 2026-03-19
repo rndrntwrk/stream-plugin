@@ -38,7 +38,7 @@ export const streamStopAction: Action = {
     _state?: State
   ): Promise<boolean> => {
     const service = runtime.getService('stream555') as StreamControlService | undefined;
-    return !!(service?.isReady());
+    return !!service;
   },
 
   handler: async (

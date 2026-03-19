@@ -122,6 +122,7 @@ export class StreamControlService implements Service {
   private httpClient: HttpClient | null = null;
   private wsClient: WsClient | null = null;
   private sessionState: Map<string, SessionState> = new Map();
+  private currentSessionId: string | null = null;
   private boundSessionId: string | null = null;
 
   /**
@@ -190,6 +191,7 @@ export class StreamControlService implements Service {
       this.wsClient.disconnect();
     }
     this.sessionState.clear();
+    this.currentSessionId = null;
     this.boundSessionId = null;
     this.wsClient = null;
     this.httpClient = null;
@@ -254,13 +256,12 @@ export class StreamControlService implements Service {
     if (result.checks.wsConnectable.passed && this.config?.defaultSessionId && this.wsClient) {
       try {
         const start = Date.now();
-        await this.wsClient.bind(this.config.defaultSessionId);
+        await this.bindWebSocket(this.config.defaultSessionId);
         result.checks.sessionAccessible = {
           passed: true,
           message: `Bound to session ${this.config.defaultSessionId}`,
           latencyMs: Date.now() - start,
         };
-        this.boundSessionId = this.config.defaultSessionId;
       } catch (error) {
         result.checks.sessionAccessible = {
           passed: false,
@@ -339,6 +340,7 @@ export class StreamControlService implements Service {
       throw new Error(response.error || 'Failed to create/resume session');
     }
 
+    this.currentSessionId = response.data.sessionId;
     // Initialize state cache for this session
     this.initSessionState(response.data);
 
@@ -353,6 +355,8 @@ export class StreamControlService implements Service {
       throw new Error('[555stream] Service not initialized');
     }
 
+    this.currentSessionId = sessionId;
+
     // Connect if not already connected
     if (this.wsClient.getState() !== 'connected') {
       await this.wsClient.connect();
@@ -360,6 +364,7 @@ export class StreamControlService implements Service {
 
     // Bind to session
     await this.wsClient.bind(sessionId);
+    this.currentSessionId = sessionId;
     this.boundSessionId = sessionId;
 
     console.log(`[555stream] Bound to session ${sessionId}`);
@@ -369,7 +374,7 @@ export class StreamControlService implements Service {
    * Get cached session state
    */
   getState(sessionId?: string): SessionState | null {
-    const id = sessionId || this.boundSessionId;
+    const id = this.resolveSessionId(sessionId);
     if (!id) return null;
     return this.sessionState.get(id) || null;
   }
@@ -386,6 +391,28 @@ export class StreamControlService implements Service {
    */
   getBoundSessionId(): string | null {
     return this.boundSessionId;
+  }
+
+  /**
+   * Get the authoritative current session ID.
+   */
+  getCurrentSessionId(): string | null {
+    return this.currentSessionId;
+  }
+
+  /**
+   * Resolve the best session ID for stateful operations.
+   * Prefers an explicit override, then the current session, then the configured default.
+   * WebSocket binding is only a last-resort fallback for legacy callers.
+   */
+  resolveSessionId(sessionId?: string): string | null {
+    const explicit = sessionId?.trim();
+    if (explicit) return explicit;
+    if (this.currentSessionId) return this.currentSessionId;
+    const configured = this.config?.defaultSessionId?.trim();
+    if (configured) return configured;
+    if (this.boundSessionId) return this.boundSessionId;
+    return null;
   }
 
   /**
@@ -436,7 +463,7 @@ export class StreamControlService implements Service {
       throw new Error('[555stream] Service not initialized');
     }
 
-    const id = sessionId || this.boundSessionId;
+    const id = this.resolveSessionId(sessionId);
     if (!id) {
       throw new Error('[555stream] No session bound');
     }
@@ -461,7 +488,7 @@ export class StreamControlService implements Service {
       throw new Error('[555stream] Service not initialized');
     }
 
-    const id = sessionId || this.boundSessionId;
+    const id = this.resolveSessionId(sessionId);
     if (!id) {
       throw new Error('[555stream] No session specified');
     }
@@ -531,7 +558,7 @@ export class StreamControlService implements Service {
       throw new Error('[555stream] Service not initialized');
     }
 
-    const id = sessionId || this.boundSessionId;
+    const id = this.resolveSessionId(sessionId);
     if (!id) {
       throw new Error('[555stream] No session bound');
     }
@@ -556,7 +583,7 @@ export class StreamControlService implements Service {
       throw new Error('[555stream] Service not initialized');
     }
 
-    const id = sessionId || this.boundSessionId;
+    const id = this.resolveSessionId(sessionId);
     if (!id) {
       throw new Error('[555stream] No session bound');
     }
@@ -581,7 +608,7 @@ export class StreamControlService implements Service {
       throw new Error('[555stream] Service not initialized');
     }
 
-    const id = sessionId || this.boundSessionId;
+    const id = this.resolveSessionId(sessionId);
     if (!id) {
       throw new Error('[555stream] No session bound');
     }
@@ -606,7 +633,7 @@ export class StreamControlService implements Service {
       throw new Error('[555stream] Service not initialized');
     }
 
-    const id = sessionId || this.boundSessionId;
+    const id = this.resolveSessionId(sessionId);
     if (!id) {
       throw new Error('[555stream] No session bound');
     }
@@ -634,7 +661,7 @@ export class StreamControlService implements Service {
       throw new Error('[555stream] Service not initialized');
     }
 
-    const id = sessionId || this.boundSessionId;
+    const id = this.resolveSessionId(sessionId);
     if (!id) {
       throw new Error('[555stream] No session bound');
     }
@@ -658,7 +685,7 @@ export class StreamControlService implements Service {
       throw new Error('[555stream] Service not initialized');
     }
 
-    const id = sessionId || this.boundSessionId;
+    const id = this.resolveSessionId(sessionId);
     if (!id) {
       throw new Error('[555stream] No session bound');
     }
@@ -683,7 +710,7 @@ export class StreamControlService implements Service {
       throw new Error('[555stream] Service not initialized');
     }
 
-    const id = sessionId || this.boundSessionId;
+    const id = this.resolveSessionId(sessionId);
     if (!id) {
       throw new Error('[555stream] No session bound');
     }
@@ -708,7 +735,7 @@ export class StreamControlService implements Service {
       throw new Error('[555stream] Service not initialized');
     }
 
-    const id = sessionId || this.boundSessionId;
+    const id = this.resolveSessionId(sessionId);
     if (!id) {
       throw new Error('[555stream] No session bound');
     }
@@ -732,7 +759,7 @@ export class StreamControlService implements Service {
       throw new Error('[555stream] Service not initialized');
     }
 
-    const id = sessionId || this.boundSessionId;
+    const id = this.resolveSessionId(sessionId);
     if (!id) {
       throw new Error('[555stream] No session bound');
     }
@@ -761,7 +788,7 @@ export class StreamControlService implements Service {
       throw new Error('[555stream] Service not initialized');
     }
 
-    const id = sessionId || this.boundSessionId;
+    const id = this.resolveSessionId(sessionId);
     if (!id) {
       throw new Error('[555stream] No session bound');
     }
@@ -786,7 +813,7 @@ export class StreamControlService implements Service {
       throw new Error('[555stream] Service not initialized');
     }
 
-    const id = sessionId || this.boundSessionId;
+    const id = this.resolveSessionId(sessionId);
     if (!id) {
       throw new Error('[555stream] No session bound');
     }
@@ -812,7 +839,7 @@ export class StreamControlService implements Service {
       throw new Error('[555stream] Service not initialized');
     }
 
-    const id = sessionId || this.boundSessionId;
+    const id = this.resolveSessionId(sessionId);
     if (!id) {
       throw new Error('[555stream] No session bound');
     }
@@ -836,7 +863,7 @@ export class StreamControlService implements Service {
       throw new Error('[555stream] Service not initialized');
     }
 
-    const id = sessionId || this.boundSessionId;
+    const id = this.resolveSessionId(sessionId);
     if (!id) {
       throw new Error('[555stream] No session bound');
     }
@@ -865,7 +892,7 @@ export class StreamControlService implements Service {
       throw new Error('[555stream] Service not initialized');
     }
 
-    const id = sessionId || this.boundSessionId;
+    const id = this.resolveSessionId(sessionId);
     if (!id) {
       throw new Error('[555stream] No session bound');
     }
@@ -890,7 +917,7 @@ export class StreamControlService implements Service {
       throw new Error('[555stream] Service not initialized');
     }
 
-    const id = sessionId || this.boundSessionId;
+    const id = this.resolveSessionId(sessionId);
     if (!id) {
       throw new Error('[555stream] No session bound');
     }
@@ -916,7 +943,7 @@ export class StreamControlService implements Service {
       throw new Error('[555stream] Service not initialized');
     }
 
-    const id = sessionId || this.boundSessionId;
+    const id = this.resolveSessionId(sessionId);
     if (!id) {
       throw new Error('[555stream] No session bound');
     }
@@ -940,7 +967,7 @@ export class StreamControlService implements Service {
       throw new Error('[555stream] Service not initialized');
     }
 
-    const id = sessionId || this.boundSessionId;
+    const id = this.resolveSessionId(sessionId);
     if (!id) {
       throw new Error('[555stream] No session bound');
     }
@@ -965,7 +992,7 @@ export class StreamControlService implements Service {
       throw new Error('[555stream] Service not initialized');
     }
 
-    const id = sessionId || this.boundSessionId;
+    const id = this.resolveSessionId(sessionId);
     if (!id) {
       throw new Error('[555stream] No session bound');
     }
@@ -1162,8 +1189,9 @@ export class StreamControlService implements Service {
     }
 
     const headers: Record<string, string> = {};
-    if (sessionId || this.boundSessionId) {
-      headers['x-session-id'] = sessionId || this.boundSessionId || '';
+    const resolvedSessionId = this.resolveSessionId(sessionId);
+    if (resolvedSessionId) {
+      headers['x-session-id'] = resolvedSessionId;
     }
 
     const response = await this.httpClient.put<{
@@ -1192,7 +1220,7 @@ export class StreamControlService implements Service {
       throw new Error('[555stream] Service not initialized');
     }
 
-    const id = sessionId || this.boundSessionId;
+    const id = this.resolveSessionId(sessionId);
     if (!id) {
       throw new Error('[555stream] No session bound');
     }
@@ -1238,7 +1266,7 @@ export class StreamControlService implements Service {
       throw new Error('[555stream] Service not initialized');
     }
 
-    const id = sessionId || this.boundSessionId;
+    const id = this.resolveSessionId(sessionId);
     if (!id) {
       throw new Error('[555stream] No session bound');
     }
@@ -1262,7 +1290,7 @@ export class StreamControlService implements Service {
       throw new Error('[555stream] Service not initialized');
     }
 
-    const id = sessionId || this.boundSessionId;
+    const id = this.resolveSessionId(sessionId);
     if (!id) {
       throw new Error('[555stream] No session bound');
     }
@@ -1291,7 +1319,7 @@ export class StreamControlService implements Service {
       throw new Error('[555stream] Service not initialized');
     }
 
-    const id = sessionId || this.boundSessionId;
+    const id = this.resolveSessionId(sessionId);
     if (!id) {
       throw new Error('[555stream] No session bound');
     }
@@ -1333,7 +1361,7 @@ export class StreamControlService implements Service {
       throw new Error('[555stream] Service not initialized');
     }
 
-    const id = sessionId || this.boundSessionId;
+    const id = this.resolveSessionId(sessionId);
     if (!id) {
       throw new Error('[555stream] No session bound');
     }
@@ -1361,7 +1389,7 @@ export class StreamControlService implements Service {
       throw new Error('[555stream] Service not initialized');
     }
 
-    const id = sessionId || this.boundSessionId;
+    const id = this.resolveSessionId(sessionId);
     if (!id) {
       throw new Error('[555stream] No session bound');
     }
@@ -1388,7 +1416,7 @@ export class StreamControlService implements Service {
       throw new Error('[555stream] Service not initialized');
     }
 
-    const id = sessionId || this.boundSessionId;
+    const id = this.resolveSessionId(sessionId);
     if (!id) {
       throw new Error('[555stream] No session bound');
     }
@@ -1430,7 +1458,7 @@ export class StreamControlService implements Service {
       throw new Error('[555stream] Service not initialized');
     }
 
-    const id = sessionId || this.boundSessionId;
+    const id = this.resolveSessionId(sessionId);
     if (!id) {
       throw new Error('[555stream] No session bound');
     }
@@ -1460,7 +1488,7 @@ export class StreamControlService implements Service {
       throw new Error('[555stream] Service not initialized');
     }
 
-    const id = sessionId || this.boundSessionId;
+    const id = this.resolveSessionId(sessionId);
     if (!id) {
       throw new Error('[555stream] No session bound');
     }
@@ -1543,7 +1571,7 @@ export class StreamControlService implements Service {
       throw new Error('[555stream] Service not initialized');
     }
 
-    const id = sessionId || this.boundSessionId;
+    const id = this.resolveSessionId(sessionId);
     if (!id) {
       throw new Error('[555stream] No session bound');
     }
@@ -1751,7 +1779,7 @@ export class StreamControlService implements Service {
       throw new Error('[555stream] Service not initialized');
     }
 
-    const id = sessionId || this.boundSessionId;
+    const id = this.resolveSessionId(sessionId);
     if (!id) {
       throw new Error('[555stream] No session bound');
     }
@@ -1791,7 +1819,7 @@ export class StreamControlService implements Service {
       throw new Error('[555stream] Service not initialized');
     }
 
-    const id = sessionId || this.boundSessionId;
+    const id = this.resolveSessionId(sessionId);
     if (!id) {
       throw new Error('[555stream] No session bound');
     }
@@ -1829,7 +1857,7 @@ export class StreamControlService implements Service {
       throw new Error('[555stream] Service not initialized');
     }
 
-    const id = sessionId || this.boundSessionId;
+    const id = this.resolveSessionId(sessionId);
     if (!id) {
       throw new Error('[555stream] No session bound');
     }
@@ -1865,7 +1893,7 @@ export class StreamControlService implements Service {
       throw new Error('[555stream] Service not initialized');
     }
 
-    const id = sessionId || this.boundSessionId;
+    const id = this.resolveSessionId(sessionId);
     if (!id) {
       throw new Error('[555stream] No session bound');
     }
@@ -2008,7 +2036,7 @@ export class StreamControlService implements Service {
       throw new Error('[555stream] Service not initialized');
     }
 
-    const id = sessionId || this.boundSessionId;
+    const id = this.resolveSessionId(sessionId);
     if (!id) {
       throw new Error('[555stream] No session bound');
     }
@@ -2041,7 +2069,7 @@ export class StreamControlService implements Service {
       throw new Error('[555stream] Service not initialized');
     }
 
-    const id = sessionId || this.boundSessionId;
+    const id = this.resolveSessionId(sessionId);
     if (!id) {
       throw new Error('[555stream] No session bound');
     }
@@ -2068,7 +2096,7 @@ export class StreamControlService implements Service {
       throw new Error('[555stream] Service not initialized');
     }
 
-    const id = sessionId || this.boundSessionId;
+    const id = this.resolveSessionId(sessionId);
     if (!id) {
       throw new Error('[555stream] No session bound');
     }
@@ -2095,7 +2123,7 @@ export class StreamControlService implements Service {
       throw new Error('[555stream] Service not initialized');
     }
 
-    const id = sessionId || this.boundSessionId;
+    const id = this.resolveSessionId(sessionId);
     if (!id) {
       throw new Error('[555stream] No session bound');
     }
@@ -2122,7 +2150,7 @@ export class StreamControlService implements Service {
       throw new Error('[555stream] Service not initialized');
     }
 
-    const id = sessionId || this.boundSessionId;
+    const id = this.resolveSessionId(sessionId);
     if (!id) {
       throw new Error('[555stream] No session bound');
     }

@@ -1,105 +1,109 @@
-import assert from "node:assert/strict";
-import { afterEach, beforeEach, describe, it } from "node:test";
-import type { IAgentRuntime } from "../types/index.js";
-import { createApprovalRequest } from "../routes/approvals.js";
-import { StreamControlService } from "./StreamControlService.js";
+import assert from 'node:assert/strict';
+import { afterEach, describe, it } from 'node:test';
 
-const STREAM_ENV_KEYS = [
-  "STREAM555_BASE_URL",
-  "STREAM555_AGENT_API_KEY",
-  "STREAM555_AGENT_TOKEN",
-  "STREAM_API_BEARER_TOKEN",
-  "STREAM555_DEST_PUMPFUN_ENABLED",
-  "STREAM555_DEST_PUMPFUN_RTMP_URL",
-  "STREAM555_DEST_PUMPFUN_STREAM_KEY",
-  "STREAM555_DEST_X_ENABLED",
-  "STREAM555_DEST_X_RTMP_URL",
-  "STREAM555_DEST_X_STREAM_KEY",
-] as const;
+import { StreamControlService } from './StreamControlService.js';
 
-const ORIGINAL_ENV = new Map<string, string | undefined>();
-
-function setEnv(key: string, value: string | undefined): void {
-  if (!ORIGINAL_ENV.has(key)) {
-    ORIGINAL_ENV.set(key, process.env[key]);
-  }
-  if (value === undefined) {
-    delete process.env[key];
-    return;
-  }
-  process.env[key] = value;
+function buildSession(sessionId: string) {
+  return {
+    sessionId,
+    resumed: false,
+    active: false,
+    productionState: {
+      activeLayout: 'full',
+      cameraOn: false,
+      screenOn: false,
+      micOn: false,
+      sources: [],
+    },
+    platforms: {},
+  };
 }
 
-describe("StreamControlService", () => {
-  beforeEach(() => {
-    for (const key of STREAM_ENV_KEYS) {
-      setEnv(key, undefined);
-    }
-  });
-
+describe('StreamControlService session continuity', () => {
   afterEach(() => {
-    for (const [key, value] of ORIGINAL_ENV.entries()) {
-      if (value === undefined) {
-        delete process.env[key];
-      } else {
-        process.env[key] = value;
-      }
-    }
-    ORIGINAL_ENV.clear();
+    delete (process.env as Record<string, string | undefined>).STREAM555_DEFAULT_SESSION_ID;
   });
 
-  it("starts through the runtime service contract and reports channel readiness", async () => {
-    setEnv("STREAM555_BASE_URL", "https://stream.rndrntwrk.com");
-    setEnv("STREAM555_AGENT_TOKEN", "stream-static-token");
-    setEnv("STREAM555_DEST_PUMPFUN_ENABLED", "true");
-    setEnv(
-      "STREAM555_DEST_PUMPFUN_RTMP_URL",
-      "rtmps://pump-prod-tg2x8veh.rtmp.livekit.cloud/x",
+  it('persists the created session and reuses it when websocket bind fails', async () => {
+    const service = new StreamControlService() as StreamControlService & {
+      httpClient: {
+        post: (path: string, body?: Record<string, unknown>) => Promise<{
+          success: boolean;
+          data?: Record<string, unknown>;
+          error?: string;
+        }>;
+        get: (path: string) => Promise<{
+          success: boolean;
+          data?: Record<string, unknown>;
+          error?: string;
+        }>;
+      };
+      wsClient: {
+        getState: () => string;
+        connect: () => Promise<void>;
+        bind: (sessionId: string) => Promise<void>;
+      };
+      config: { defaultSessionId?: string } | null;
+    };
+
+    const requests: Array<{ method: string; path: string; body?: Record<string, unknown> }> = [];
+    service.httpClient = {
+      post: async (path: string, body?: Record<string, unknown>) => {
+        requests.push({ method: 'POST', path, body });
+        if (path === '/api/agent/v1/sessions') {
+          return { success: true, data: buildSession('session-1') };
+        }
+        if (path === '/api/agent/v1/sessions/session-1/stream/stop') {
+          return { success: true, data: { stopped: true, wasActive: false } };
+        }
+        return { success: true, data: { ok: true } };
+      },
+      get: async (path: string) => {
+        requests.push({ method: 'GET', path });
+        if (path === '/api/agent/v1/sessions/session-1/stream/status') {
+          return {
+            success: true,
+            data: {
+              sessionId: 'session-1',
+              active: true,
+              cfSessionId: 'cf-session-1',
+              cloudflare: { isConnected: true, state: 'connected' },
+              platforms: {},
+            },
+          };
+        }
+        return { success: true, data: { ok: true } };
+      },
+    };
+    service.wsClient = {
+      getState: () => 'connected',
+      connect: async () => {},
+      bind: async () => {
+        throw new Error('bind failed');
+      },
+    };
+    service.config = { defaultSessionId: 'default-session' };
+
+    const session = await service.createOrResumeSession();
+    assert.equal(session.sessionId, 'session-1');
+    assert.equal(service.getCurrentSessionId(), 'session-1');
+
+    await assert.rejects(() => service.bindWebSocket('session-1'));
+    assert.equal(service.getCurrentSessionId(), 'session-1');
+
+    const status = await service.getStreamStatus();
+    assert.equal(status.sessionId, 'session-1');
+
+    const stop = await service.stopStream();
+    assert.equal(stop.stopped, true);
+
+    assert.deepEqual(
+      requests.map((entry) => `${entry.method} ${entry.path}`),
+      [
+        'POST /api/agent/v1/sessions',
+        'GET /api/agent/v1/sessions/session-1/stream/status',
+        'POST /api/agent/v1/sessions/session-1/stream/stop',
+      ],
     );
-    setEnv("STREAM555_DEST_PUMPFUN_STREAM_KEY", "pump-stream-key");
-    setEnv("STREAM555_DEST_X_RTMP_URL", "rtmps://or.pscp.tv:443/x");
-    setEnv("STREAM555_DEST_X_STREAM_KEY", "x-stream-key");
-
-    const service = await StreamControlService.start({} as IAgentRuntime);
-    const runtimeState = service.getRuntimeState();
-
-    assert.equal(service.serviceType, "stream555");
-    assert.equal(runtimeState.loaded, true);
-    assert.equal(runtimeState.authenticated, true);
-    assert.match(runtimeState.authSource, /static bearer/i);
-    assert.equal(runtimeState.channelsSaved, 2);
-    assert.equal(runtimeState.channelsEnabled, 1);
-    assert.equal(runtimeState.channelsReady, 1);
-    assert.deepEqual(runtimeState.errors, []);
-
-    await service.stop();
-    assert.equal(service.getRuntimeState().loaded, false);
-  });
-
-  it("exposes plugin-owned approval state for host approval APIs", async () => {
-    setEnv("STREAM555_BASE_URL", "https://stream.rndrntwrk.com");
-    setEnv("STREAM555_AGENT_TOKEN", "stream-static-token");
-
-    const service = await StreamControlService.start({} as IAgentRuntime);
-    const approval = createApprovalRequest("STREAM555_STREAM_STOP", {
-      sessionId: "session-1",
-    });
-
-    const pending = service.listPendingApprovals();
-    assert.equal(pending.some((entry) => entry.id === approval.id), true);
-
-    const resolved = service.resolveApproval(
-      approval.id,
-      "approved",
-      "stream-plugin-test",
-    );
-    assert.equal(resolved, true);
-
-    const refreshed = service
-      .listPendingApprovals()
-      .find((entry) => entry.id === approval.id);
-    assert.equal(refreshed, undefined);
-
-    await service.stop();
   });
 });

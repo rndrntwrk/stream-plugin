@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, it } from 'node:test';
 import type { IAgentRuntime } from '../types/index.js';
 import { legacyCompatibilityActions } from './legacyCompat.js';
 import { streamStatusAction } from './streamStatus.js';
+import { streamStopAction } from './streamStop.js';
 import type { StreamControlService } from '../services/StreamControlService.js';
 
 const ORIGINAL_ENV = new Map<string, string | undefined>();
@@ -79,6 +80,7 @@ describe('legacyCompatibilityActions', () => {
     const toggleCalls: Array<Record<string, unknown>> = [];
     const stopCalls: string[] = [];
     const service = {
+      getCurrentSessionId: () => 'session-1',
       getBoundSessionId: () => 'session-1',
       getConfig: () => ({
         baseUrl: 'https://stream.example',
@@ -173,6 +175,7 @@ describe('legacyCompatibilityActions', () => {
     setEnv('STREAM555_AGENT_TOKEN', 'static-token');
 
     const service = {
+      getCurrentSessionId: () => 'session-1',
       getBoundSessionId: () => 'session-1',
       getConfig: () => ({
         baseUrl: 'https://stream.example',
@@ -258,5 +261,88 @@ describe('streamStatusAction', () => {
     assert.equal(lastPayload.content?.success, true);
     assert.equal(lastPayload.content?.data?.sessionId, 'session-42');
     assert.match(lastPayload.text ?? '', /Cloudflare.*connected/i);
+  });
+
+  it('uses the current session when websocket binding is unavailable', async () => {
+    const service = {
+      isReady: () => false,
+      getBoundSessionId: () => null,
+      getCurrentSessionId: () => 'session-current',
+      getConfig: () => ({
+        defaultSessionId: 'default-session',
+      }),
+      getStreamStatus: async (sessionId?: string) => ({
+        sessionId: sessionId ?? 'missing',
+        active: true,
+        cfSessionId: 'cf-session-1',
+        cloudflare: { isConnected: true, state: 'live' },
+        serverFallbackActive: false,
+        platforms: { twitch: { enabled: true, status: 'live' } },
+      }),
+    } as unknown as StreamControlService;
+    const runtime = {
+      getService: (name: string) => (name === 'stream555' ? service : undefined),
+    } as IAgentRuntime;
+
+    const callbackPayloads: Array<Record<string, unknown>> = [];
+    const ok = await streamStatusAction.handler(
+      runtime,
+      {},
+      undefined,
+      {},
+      (payload) => {
+        callbackPayloads.push(payload as Record<string, unknown>);
+      },
+    );
+
+    assert.equal(ok, true);
+    const lastPayload = callbackPayloads.at(-1) as {
+      content?: { success?: boolean; data?: { sessionId?: string } };
+    };
+    assert.equal(lastPayload.content?.success, true);
+    assert.equal(lastPayload.content?.data?.sessionId, 'session-current');
+  });
+});
+
+describe('streamStopAction', () => {
+  it('allows stop when only the current session is available', async () => {
+    let stopSessionId: string | undefined;
+    const service = {
+      isReady: () => false,
+      getCurrentSessionId: () => 'session-current',
+      getBoundSessionId: () => null,
+      getConfig: () => ({
+        requireApprovals: false,
+      }),
+      stopStream: async (sessionId?: string) => {
+        stopSessionId = sessionId;
+        return { stopped: true, wasActive: true };
+      },
+    } as unknown as StreamControlService;
+    const runtime = {
+      getService: (name: string) => (name === 'stream555' ? service : undefined),
+    } as IAgentRuntime;
+
+    const valid = await streamStopAction.validate(runtime, {});
+    assert.equal(valid, true);
+
+    const callbackPayloads: Array<Record<string, unknown>> = [];
+    const ok = await streamStopAction.handler(
+      runtime,
+      {},
+      undefined,
+      {},
+      (payload) => {
+        callbackPayloads.push(payload as Record<string, unknown>);
+      },
+    );
+
+    assert.equal(ok, true);
+    assert.equal(stopSessionId, undefined);
+    const lastPayload = callbackPayloads.at(-1) as {
+      content?: { success?: boolean; data?: { stopped?: boolean } };
+    };
+    assert.equal(lastPayload.content?.success, true);
+    assert.equal(lastPayload.content?.data?.stopped, true);
   });
 });
