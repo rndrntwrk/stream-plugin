@@ -193,6 +193,88 @@ describe('legacyCompatibilityActions', () => {
     },
   );
 
+  it(
+    'prefers fresh API-key exchange over a stale configured bearer for go-live',
+    { timeout: 10000 },
+    async () => {
+      setEnv('STREAM555_BASE_URL', 'https://stream.example');
+      setEnv('STREAM555_AGENT_API_KEY', 'agent-api-key');
+      setEnv('STREAM555_AGENT_TOKEN', 'expired-token');
+
+      const service = {
+        getCurrentSessionId: () => 'session-1',
+        getBoundSessionId: () => 'session-1',
+        getConfig: () => ({
+          baseUrl: 'https://stream.example',
+          agentToken: 'expired-token',
+          defaultSessionId: 'session-1',
+        }),
+      } as unknown as StreamControlService;
+      const runtime = {
+        getService: (name: string) => (name === 'stream555' ? service : undefined),
+      } as IAgentRuntime;
+
+      const requests: Array<{ url: string; auth?: string }> = [];
+      globalThis.fetch = (async (input: unknown, init?: RequestInit) => {
+        const authHeader =
+          init?.headers && !Array.isArray(init.headers)
+            ? String((init.headers as Record<string, string>).Authorization ?? '')
+            : '';
+        requests.push({
+          url: String(input),
+          auth: authHeader,
+        });
+
+        if (String(input).endsWith('/api/agent/v1/auth/token/exchange')) {
+          return buildJsonResponse(200, {
+            token: 'fresh-token',
+            expiresAt: '2099-01-01T00:00:00.000Z',
+          });
+        }
+
+        if (String(input).endsWith('/stream/start')) {
+          return buildJsonResponse(201, { status: 'started', cfSessionId: 'cf-session-1' });
+        }
+
+        return buildJsonResponse(200, {
+          active: true,
+          cfSessionId: 'cf-session-1',
+          cloudflare: { isConnected: true, state: 'live' },
+          platforms: { twitch: { enabled: true, status: 'live' } },
+        });
+      }) as typeof fetch;
+
+      const callbackPayloads: Array<Record<string, unknown>> = [];
+      const action = findAction('STREAM555_GO_LIVE');
+      const ok = await action.handler(
+        runtime,
+        {},
+        undefined,
+        {
+          sessionId: 'session-1',
+          inputType: 'avatar',
+          layoutMode: 'camera-full',
+        },
+        (payload) => {
+          callbackPayloads.push(payload as Record<string, unknown>);
+        },
+      );
+
+      assert.equal(ok, true);
+      assert.match(requests[0]?.url ?? '', /\/api\/agent\/v1\/auth\/token\/exchange$/);
+      assert.match(requests[1]?.url ?? '', /\/stream\/start$/);
+      assert.equal(requests[1]?.auth, 'Bearer fresh-token');
+      assert.match(requests[2]?.url ?? '', /\/stream\/status$/);
+      assert.equal(requests[2]?.auth, 'Bearer fresh-token');
+
+      const lastPayload = callbackPayloads.at(-1) as {
+        content?: { success?: boolean; data?: Record<string, unknown> };
+      };
+      assert.equal(lastPayload.content?.success, true);
+      assert.equal(lastPayload.content?.data?.cloudflareConnected, true);
+    },
+  );
+
   it('bootstraps segments through the go-live segments endpoint and treats already-active as success', async () => {
     setEnv('STREAM555_BASE_URL', 'https://stream.example');
     setEnv('STREAM555_AGENT_TOKEN', 'static-token');
