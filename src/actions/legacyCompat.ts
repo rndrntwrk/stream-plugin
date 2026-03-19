@@ -492,6 +492,9 @@ async function applyConfiguredDestinations(
     platformId,
     error: 'unsupported_platform',
   }));
+  const deselectedMappings = requestedPlatformSet.size > 0
+    ? DESTINATION_MAPPINGS.filter((mapping) => !requestedPlatformSet.has(mapping.platformId))
+    : [];
 
   for (const mapping of mappings) {
     const enabled =
@@ -536,8 +539,24 @@ async function applyConfiguredDestinations(
     }
   }
 
+  for (const mapping of deselectedMappings) {
+    try {
+      await service.togglePlatform(mapping.platformId, false, sessionId);
+      applied.push({
+        platformId: mapping.platformId,
+        enabled: false,
+        configured: false,
+      });
+    } catch (error) {
+      failed.push({
+        platformId: mapping.platformId,
+        error: `session_disable_failed: ${(error as Error).message}`,
+      });
+    }
+  }
+
   return {
-    attempted: mappings.length + unsupported.length,
+    attempted: mappings.length + unsupported.length + deselectedMappings.length,
     applied,
     skipped,
     failed,

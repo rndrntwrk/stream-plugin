@@ -149,7 +149,22 @@ describe('legacyCompatibilityActions', () => {
 
     assert.equal(ok, true);
     assert.equal(updateCalls.length, 1);
-    assert.equal(toggleCalls.length, 1);
+    assert.ok(
+      toggleCalls.some(
+        (call) =>
+          call.platformId === 'twitch' &&
+          call.enabled === true &&
+          call.sessionId === 'session-1',
+      ),
+    );
+    assert.ok(
+      toggleCalls.some(
+        (call) =>
+          call.platformId === 'custom' &&
+          call.enabled === false &&
+          call.sessionId === 'session-1',
+      ),
+    );
     assert.equal(stopCalls.length, 0);
     assert.match(requestedUrls[0] ?? '', /\/stream\/start$/);
     assert.match(requestedUrls[1] ?? '', /\/stream\/status$/);
@@ -162,10 +177,18 @@ describe('legacyCompatibilityActions', () => {
     assert.equal(lastPayload.content?.success, true);
     assert.equal(lastPayload.content?.data?.cloudflareConnected, true);
     assert.equal(lastPayload.content?.data?.cfSessionId, 'cf-session-1');
-    assert.equal(
-      (lastPayload.content?.data?.destinationSync as { applied?: unknown[] } | undefined)?.applied
-        ?.length,
-      1,
+    const destinationSync = lastPayload.content?.data?.destinationSync as
+      | { applied?: Array<{ platformId?: string; enabled?: boolean }> }
+      | undefined;
+    assert.ok(
+      destinationSync?.applied?.some(
+        (entry) => entry.platformId === 'twitch' && entry.enabled === true,
+      ),
+    );
+    assert.ok(
+      destinationSync?.applied?.some(
+        (entry) => entry.platformId === 'custom' && entry.enabled === false,
+      ),
     );
     },
   );
