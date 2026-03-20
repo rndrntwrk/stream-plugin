@@ -67,8 +67,12 @@ interface StreamReadinessSnapshot {
   active: boolean;
   jobId?: string;
   cfSessionId?: string;
+  phase?: string;
+  publisher?: string;
   cloudflareConnected: boolean;
   cloudflareState?: string;
+  requiredOutputsReady?: boolean;
+  statusReason?: string;
   platforms: Record<string, unknown>;
   raw?: JsonObject;
 }
@@ -588,11 +592,63 @@ async function fetchStreamReadinessSnapshot(
     active: Boolean(response.data?.active),
     jobId: getStringField(response.data, 'jobId'),
     cfSessionId: getStringField(response.data, 'cfSessionId'),
+    phase: getStringField(response.data, 'phase'),
+    publisher: getStringField(response.data, 'publisher'),
     cloudflareConnected: Boolean(cloudflare?.isConnected),
     cloudflareState: getStringField(cloudflare, 'state'),
+    requiredOutputsReady:
+      typeof response.data?.requiredOutputsReady === 'boolean'
+        ? response.data.requiredOutputsReady
+        : undefined,
+    statusReason: getStringField(response.data, 'statusReason'),
     platforms,
     raw: response.data,
   };
+}
+
+function extractReadinessSnapshot(
+  sessionId: string,
+  data: JsonObject | undefined,
+): StreamReadinessSnapshot | undefined {
+  if (!data) return undefined;
+  const cloudflare = getObject(data.cloudflare);
+  const platforms = getObject(data.platforms) ?? {};
+  return {
+    sessionId,
+    active: Boolean(data.active),
+    jobId: getStringField(data, 'jobId'),
+    cfSessionId: getStringField(data, 'cfSessionId'),
+    phase: getStringField(data, 'phase'),
+    publisher: getStringField(data, 'publisher'),
+    cloudflareConnected: Boolean(cloudflare?.isConnected),
+    cloudflareState: getStringField(cloudflare, 'state'),
+    requiredOutputsReady:
+      typeof data.requiredOutputsReady === 'boolean' ? data.requiredOutputsReady : undefined,
+    statusReason: getStringField(data, 'statusReason'),
+    platforms,
+    raw: data,
+  };
+}
+
+function isReadyPhase(phase: string | undefined): boolean {
+  const normalized = typeof phase === 'string' ? phase.trim().toLowerCase() : '';
+  return (
+    normalized === 'live' ||
+    normalized === 'ingest_connected' ||
+    normalized === 'outputs_pending'
+  );
+}
+
+function isStreamReadinessSatisfied(
+  snapshot: StreamReadinessSnapshot | undefined,
+): boolean {
+  if (!snapshot?.active || !snapshot.cfSessionId) {
+    return false;
+  }
+  if (snapshot.cloudflareConnected) {
+    return true;
+  }
+  return isReadyPhase(snapshot.phase);
 }
 
 async function waitForStreamReadiness(
@@ -607,11 +663,7 @@ async function waitForStreamReadiness(
 
   while (Date.now() <= deadline) {
     lastSnapshot = await fetchStreamReadinessSnapshot(baseUrl, headers, sessionId);
-    if (
-      lastSnapshot.active &&
-      lastSnapshot.cfSessionId &&
-      lastSnapshot.cloudflareConnected
-    ) {
+    if (isStreamReadinessSatisfied(lastSnapshot)) {
       return { ready: true, lastSnapshot };
     }
     if (Date.now() >= deadline) break;
@@ -786,10 +838,15 @@ const goLiveAction: Action = {
         },
       );
       let initialSnapshot: StreamReadinessSnapshot | undefined;
+      let immediateReadySnapshot: StreamReadinessSnapshot | undefined;
       const responseCfSessionId = getStringField(startResponse.data, 'cfSessionId');
+      if (startResponse.ok) {
+        immediateReadySnapshot = extractReadinessSnapshot(sessionId, startResponse.data);
+      }
       if (!startResponse.ok) {
         if (startResponse.status === 409) {
           initialSnapshot = await fetchStreamReadinessSnapshot(baseUrl, headers, sessionId);
+          immediateReadySnapshot = initialSnapshot;
         }
         if (!(startResponse.status === 409 && (responseCfSessionId || initialSnapshot?.cfSessionId))) {
           throw new Error(
@@ -798,7 +855,9 @@ const goLiveAction: Action = {
         }
       }
 
-      const readiness = await waitForStreamReadiness(baseUrl, headers, sessionId);
+      const readiness = isStreamReadinessSatisfied(immediateReadySnapshot)
+        ? { ready: true, lastSnapshot: immediateReadySnapshot }
+        : await waitForStreamReadiness(baseUrl, headers, sessionId);
       if (!readiness.ready) {
         try {
           await service.stopStream(sessionId);
@@ -832,8 +891,17 @@ const goLiveAction: Action = {
           readiness.lastSnapshot?.cfSessionId ??
           responseCfSessionId ??
           initialSnapshot?.cfSessionId,
+        phase: readiness.lastSnapshot?.phase ?? getStringField(startResponse.data, 'phase'),
+        publisher: readiness.lastSnapshot?.publisher ?? getStringField(startResponse.data, 'publisher'),
         cloudflareConnected: readiness.lastSnapshot?.cloudflareConnected ?? false,
         cloudflareState: readiness.lastSnapshot?.cloudflareState,
+        requiredOutputsReady:
+          readiness.lastSnapshot?.requiredOutputsReady ??
+          (typeof startResponse.data?.requiredOutputsReady === 'boolean'
+            ? startResponse.data.requiredOutputsReady
+            : undefined),
+        statusReason:
+          readiness.lastSnapshot?.statusReason ?? getStringField(startResponse.data, 'statusReason'),
         destinationSync,
         platformStatuses: readiness.lastSnapshot?.platforms,
         streamStatus: readiness.lastSnapshot?.raw,

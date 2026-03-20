@@ -194,6 +194,160 @@ describe('legacyCompatibilityActions', () => {
   );
 
   it(
+    'trusts server-reported avatar ready phases from stream/start without a second hard failure gate',
+    { timeout: 10000 },
+    async () => {
+      setEnv('STREAM555_BASE_URL', 'https://stream.example');
+      setEnv('STREAM555_AGENT_TOKEN', 'static-token');
+
+      const stopCalls: string[] = [];
+      const service = {
+        getCurrentSessionId: () => 'session-1',
+        getBoundSessionId: () => 'session-1',
+        getConfig: () => ({
+          baseUrl: 'https://stream.example',
+          agentToken: 'static-token',
+          defaultSessionId: 'session-1',
+        }),
+        stopStream: async (sessionId?: string) => {
+          stopCalls.push(sessionId ?? '');
+          return { stopped: true, wasActive: true };
+        },
+      } as unknown as StreamControlService;
+      const runtime = {
+        getService: (name: string) => (name === 'stream555' ? service : undefined),
+      } as IAgentRuntime;
+
+      const requestedUrls: string[] = [];
+      globalThis.fetch = (async (input: unknown) => {
+        requestedUrls.push(String(input));
+        return buildJsonResponse(201, {
+          status: 'started',
+          phase: 'outputs_pending',
+          sessionId: 'session-1',
+          active: true,
+          cfSessionId: 'cf-session-1',
+          publisher: 'capture_service_rtmps',
+          statusReason: 'ingest connected, waiting for outputs: twitch(pending), kick(pending)',
+          requiredOutputsReady: false,
+          cloudflare: { isConnected: false, state: 'unknown' },
+          platforms: {
+            twitch: { enabled: true, status: 'idle' },
+            kick: { enabled: true, status: 'idle' },
+          },
+        });
+      }) as typeof fetch;
+
+      const callbackPayloads: Array<Record<string, unknown>> = [];
+      const action = findAction('STREAM555_GO_LIVE');
+      const ok = await action.handler(
+        runtime,
+        {},
+        undefined,
+        {
+          sessionId: 'session-1',
+          inputType: 'avatar',
+          layoutMode: 'camera-full',
+        },
+        (payload) => {
+          callbackPayloads.push(payload as Record<string, unknown>);
+        },
+      );
+
+      assert.equal(ok, true);
+      assert.equal(requestedUrls.length, 1);
+      assert.match(requestedUrls[0] ?? '', /\/stream\/start$/);
+      assert.equal(stopCalls.length, 0);
+
+      const lastPayload = callbackPayloads.at(-1) as {
+        content?: { success?: boolean; data?: Record<string, unknown> };
+      };
+      assert.equal(lastPayload.content?.success, true);
+      assert.equal(lastPayload.content?.data?.phase, 'outputs_pending');
+      assert.equal(lastPayload.content?.data?.cfSessionId, 'cf-session-1');
+      assert.equal(lastPayload.content?.data?.requiredOutputsReady, false);
+      assert.equal(lastPayload.content?.data?.statusReason, 'ingest connected, waiting for outputs: twitch(pending), kick(pending)');
+    },
+  );
+
+  it(
+    'accepts ready avatar phases observed during status polling even if Cloudflare lagged the boolean flag',
+    { timeout: 10000 },
+    async () => {
+      setEnv('STREAM555_BASE_URL', 'https://stream.example');
+      setEnv('STREAM555_AGENT_TOKEN', 'static-token');
+
+      const stopCalls: string[] = [];
+      const service = {
+        getCurrentSessionId: () => 'session-1',
+        getBoundSessionId: () => 'session-1',
+        getConfig: () => ({
+          baseUrl: 'https://stream.example',
+          agentToken: 'static-token',
+          defaultSessionId: 'session-1',
+        }),
+        stopStream: async (sessionId?: string) => {
+          stopCalls.push(sessionId ?? '');
+          return { stopped: true, wasActive: true };
+        },
+      } as unknown as StreamControlService;
+      const runtime = {
+        getService: (name: string) => (name === 'stream555' ? service : undefined),
+      } as IAgentRuntime;
+
+      const requestedUrls: string[] = [];
+      const responses = [
+        buildJsonResponse(201, { status: 'started', cfSessionId: 'cf-session-1' }),
+        buildJsonResponse(200, {
+          sessionId: 'session-1',
+          active: true,
+          phase: 'outputs_pending',
+          cfSessionId: 'cf-session-1',
+          publisher: 'capture_service_rtmps',
+          statusReason: 'ingest connected, waiting for outputs: twitch(pending)',
+          requiredOutputsReady: false,
+          cloudflare: { isConnected: false, state: 'unknown' },
+          platforms: { twitch: { enabled: true, status: 'idle' } },
+        }),
+      ];
+      globalThis.fetch = (async (input: unknown) => {
+        requestedUrls.push(String(input));
+        const next = responses.shift();
+        assert.ok(next, 'unexpected fetch');
+        return next;
+      }) as typeof fetch;
+
+      const callbackPayloads: Array<Record<string, unknown>> = [];
+      const action = findAction('STREAM555_GO_LIVE');
+      const ok = await action.handler(
+        runtime,
+        {},
+        undefined,
+        {
+          sessionId: 'session-1',
+          inputType: 'avatar',
+          layoutMode: 'camera-full',
+        },
+        (payload) => {
+          callbackPayloads.push(payload as Record<string, unknown>);
+        },
+      );
+
+      assert.equal(ok, true);
+      assert.equal(stopCalls.length, 0);
+      assert.match(requestedUrls[0] ?? '', /\/stream\/start$/);
+      assert.match(requestedUrls[1] ?? '', /\/stream\/status$/);
+
+      const lastPayload = callbackPayloads.at(-1) as {
+        content?: { success?: boolean; data?: Record<string, unknown> };
+      };
+      assert.equal(lastPayload.content?.success, true);
+      assert.equal(lastPayload.content?.data?.phase, 'outputs_pending');
+      assert.equal(lastPayload.content?.data?.requiredOutputsReady, false);
+    },
+  );
+
+  it(
     'prefers fresh API-key exchange over a stale configured bearer for go-live',
     { timeout: 10000 },
     async () => {
