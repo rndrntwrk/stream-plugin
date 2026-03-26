@@ -132,6 +132,10 @@ If approvals are enabled:
 
 ## Next docs
 
+- `OPERATOR_HANDBOOK_INDEX.md`
+- `OPERATOR_JOURNEY.md`
 - `INSTALL_AND_AUTH.md`
 - `ACTIONS_REFERENCE.md`
 - `EDGE_CASES_AND_RECOVERY.md`
+- `RUNBOOK_PACK.md`
+- `STREAM_MASTERY_LANE.md`
