@@ -4,6 +4,16 @@ Canonical elizaOS/Milaidy plugin for `555 Stream` live operations.
 
 Status: public preview (`0.1.0-beta.1`).
 
+## Deployment structure
+
+Verified on 2026-04-14.
+
+This repo is a plugin/package release surface, not a hosted app deployment. No Vercel, Railway, Render, or Cloudflare app-host config was found at this project root during the audit.
+
+Operationally, "deploying" this project means publishing or installing the package and validating stream operator actions against the live 555stream control plane. Use `docs/PUBLISHING.md`, `docs/PUBLIC_RELEASE_CHECKLIST.md`, and the docs listed below for release readiness.
+
+The local-only 555stream runbook at `555/internal-ops-docs/deploy/DEPLOY_GIT_AUTH_RUNBOOK.md` documents the production 555stream host Git-auth recovery path. This plugin should reference that runbook only for operator context; it does not own the stream-host deployment itself.
+
 This package owns the public streaming surface for:
 - authentication and session bootstrap
 - channel configuration and go-live
